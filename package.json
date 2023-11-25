@@ -1,0 +1,51 @@
+{
+	"name": "@liquicode/jsonstor",
+	"version": "0.0.4",
+	"description": "A centralized MongoDB-style interface to work with multiple database products and implementations.",
+	"license": "MIT",
+	"homepage": "http://jsonstor.liquicode.com",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/liquicode/jsonstor"
+	},
+	"authors": [
+		{
+			"name": "Andre' G. Bowlin",
+			"email": "agbowlin@gmail.com",
+			"homepage": "http://liquicode.com"
+		}
+	],
+	"main": "src/jsonstor.js",
+	"scripts": {
+		"test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
+		"publish version": "npx @liquicode/devops --tasks .\\build\\devops.tasks.js publish_version",
+		"start new version": "npx @liquicode/devops --tasks .\\build\\devops.tasks.js start_new_version"
+	},
+	"keywords": [
+		"memory db",
+		"file db",
+		"mongo db",
+		"mongo query",
+		"query",
+		"update",
+		"project",
+		"qbe",
+		"$eq",
+		"$and",
+		"object",
+		"compare"
+	],
+	"devDependencies": {
+		"mocha": "^10.2.0",
+		"mongodb": "^4.6.0",
+		"webpack": "^5.89.0",
+		"webpack-cli": "^5.1.4",
+		"webpack-node-externals": "^3.0.0",
+		"xlsx": "^0.18.5"
+	},
+	"dependencies": {
+		"@liquicode/jsongin": "0.0.11",
+		"lockfile": "^1.0.4",
+		"uuid": "^9.0.1"
+	}
+}
