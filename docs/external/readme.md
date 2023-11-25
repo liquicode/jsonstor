@@ -1,4 +1,4 @@
-# JSON Storages
+# jsonstor
 [`@liquiode/jsonstor`](https://github.com/liquicode/jsonstor) (v0.0.4)
 
 ### A centralized interface to work with multiple database products and implementations.
@@ -36,13 +36,17 @@ Features
 ---------------------------------------------------------------------
 
 - 100% Javascript with minimal dependencies.
-- Storage interface is 100% `async` and `await`-able.
-- Extensible plugin architecture. Create your own adapters and filters.
+- 100% `async` and `await`-able storage functions.
+- Create your own adapters and filters with the extensible plugin architecture.
 
 
 Database Interface
 ---------------------------------------------------------------------
 
+- `DropStorage( Options )` :
+	Deletes the storage from its persistent medium.
+- `FlushStorage( Options )` :
+	Forces any changes cached in memory to be written to the storage.
 - `Count( Criteria, Options )` :
 	Returns a count of documents satisfying `Criteria`.
 - `InsertOne( Document, Options )` :
@@ -150,7 +154,7 @@ Again, this pipeline can be directed to store data with any storage adapter.
 
 ### Planned Filters
 
-- `jsonstor-oplog` : Traces storage functions and outputs to console, file, or other log targets.
+- `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
 - `jsonstor-timestamps` : Adds `created` and `updated` timestamps to documents.
 - `jsonstor-wss-server` : Exports a storage over the network to storage wss-client.
 

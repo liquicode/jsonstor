@@ -30,7 +30,7 @@ module.exports = {
 		{ $CopyFile: { from: 'readme.md', to: 'docs/external/readme.md' } },
 		{ $CopyFile: { from: 'license.md', to: 'docs/external/license.md' } },
 		{ $CopyFile: { from: 'version.md', to: 'docs/external/version.md' } },
-		{ $CopyFile: { from: 'hitory.md', to: 'docs/external/hitory.md' } },
+		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
 		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
 
 	],
@@ -119,7 +119,7 @@ module.exports = {
 		{ $RunTask: { name: 'run_webpack' } },
 		{ $RunTask: { name: 'update_aws_docs' } },
 		{ $RunTask: { name: 'git_publish_version' } },
-		// { $RunTask: { name: 'npm_publish_version' } },
+		{ $RunTask: { name: 'npm_publish_version' } },
 
 	],
 

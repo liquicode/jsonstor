@@ -104,8 +104,8 @@ module.exports = function ( AdapterName, Settings, Filters )
 	Storages.LoadPlugin( require( './Adapters/jsonstor-memory' ) );
 	Storages.LoadPlugin( require( './Adapters/jsonstor-jsonfile' ) );
 	Storages.LoadPlugin( require( './Adapters/jsonstor-folder' ) );
-	Storages.LoadPlugin( require( './Adapters/jsonstor-mongodb' ) );
-	Storages.LoadPlugin( require( './Adapters/jsonstor-excel' ) );
+	// Storages.LoadPlugin( require( './Adapters/jsonstor-mongodb' ) );
+	// Storages.LoadPlugin( require( './Adapters/jsonstor-excel' ) );
 	// Load Filters
 	Storages.LoadPlugin( require( './Filters/jsonstor-oplog' ) );
 	Storages.LoadPlugin( require( './Filters/jsonstor-userinfo' ) );
