@@ -1,5 +1,5 @@
 # jsonstor
-[`@liquiode/jsonstor`](https://github.com/liquicode/jsonstor) (v0.0.6)
+[`@liquiode/jsonstor`](https://github.com/liquicode/jsonstor) (v0.0.7)
 
 ### A centralized interface to work with multiple database products and implementations.
 
