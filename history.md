@@ -9,6 +9,8 @@
 ---------------------------------------------------------------------
 
 - Remove unsused dev-dependencies
+- Fixed docs images
+- Aded link to official docs in readme.md
 
 
 2023-11-26: v0.0.5
