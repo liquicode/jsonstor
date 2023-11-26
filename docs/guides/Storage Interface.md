@@ -135,4 +135,4 @@ See [Projection Operators](./Projection%20Operators.md) for more information.
 
 ### DeleteMany( Criteria, Options )
 
-	Deletes all documents satisfying `Criteria`.
+***Deletes all documents satisfying `Criteria`.***

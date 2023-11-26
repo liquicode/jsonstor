@@ -4,7 +4,7 @@
 ### A centralized interface to work with multiple database products and implementations.
 
 
-Official Docs: [https://jsonstor.liquicode.com](https://jsonstor.liquicode.com)
+Official Docs: [http://jsonstor.liquicode.com](http://jsonstor.liquicode.com)
 
 
 Overview
@@ -30,7 +30,7 @@ You can use the convenient and intuitive MongoDB Query interface to access any k
 	regardless of where it lives.
 
 With a single interface to access data, we can develop common tools and plugins.
-For example, `jsonstor` ships with a plugin called `user-info` that adds user ownership,
+For example, `jsonstor` ships with a plugin called `jsonstor-userinfo` that adds user ownership,
 	access controls, and sharing to documents in any database.
 There is also a `timestamps` plugin which adds `created` and `updated` timestamps to documents.
 
@@ -72,34 +72,53 @@ Database Interface
 	Deletes all documents satisfying `Criteria`.
 
 
-Query Interface
+Query, Projection, and Update Operators
 ---------------------------------------------------------------------
 
-- Logical Operators
-	- `$and` : Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.
-	- `$or` : Joins query clauses with a logical OR returns all documents that match the conditions of either clause.
-	- `$nor` : Joins query clauses with a logical NOR returns all documents that fail to match both clauses.
-	- `$not` : Inverts the effect of a query expression and returns documents that do not match the query expression.
+`jsonstor` relies heavily upon the MongoDB-style mechanics implemented in the [jsongin](http://jsongin.liquicode.com) library.
 
-- Comparison Operators
-	- `$eq` : Matches values that are equal to a specified value.
-	- `$ne` : Matches all values that are not equal to a specified value.
-	- `$gt` : Matches values that are greater than a specified value.
-	- `$gte` : Matches values that are greater than or equal to a specified value.
-	- `$lt` : Matches values that are less than a specified value.
-	- `$lte` : Matches values that are less than or equal to a specified value.
-	- `$in` : Matches any of the values specified in an array.
-	- `$nin` : Matches none of the values specified in an array.
-	- `$regex` : 
+Here is a summary of supported operators:
 
-- Array Operators
-	- `$elemMatch` : 
-	- `$size` : 
-	- `$all` : 
+### Query Operators
 
-- Meta Operators
-	- `$exists` : Matches documents that have the specified field.
-	- `$type` : Selects documents if a field is of the specified type.
+|**Category** | **Operator**  | **Description**                                                                                                          |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------|
+| Comparison | <field>: value | Implicit $eq. Specify a document field and value. A matching document will have that field strictly equal to that value. |
+| Comparison | $eq            | Matches values that are equal to a specified value.                                                                      |
+| Comparison | $ne            | Matches all values that are not equal to a specified value.                                                              |
+| Comparison | $gt            | Matches values that are greater than a specified value.                                                                  |
+| Comparison | $gte           | Matches values that are greater than or equal to a specified value.                                                      |
+| Comparison | $lt            | Matches values that are less than a specified value.                                                                     |
+| Comparison | $lte           | Matches values that are less than or equal to a specified value.                                                         |
+| Comparison | $in            | Matches any of the values specified in an array.                                                                         |
+| Comparison | $nin           | Matches none of the values specified in an array.                                                                        |
+| Logical    | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                  |
+| Logical    | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                  |
+| Logical    | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                            |
+| Logical    | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression.                   |
+| Element    | $exists        | Matches documents that have the specified field.                                                                         |
+| Element    | $type          | Selects documents if a field is of the specified type.                                                                   |
+| Evaluation | $regex         | Selects documents where values match a specified regular expression.                                                     |
+| Array      | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                         |
+| Array      | $size          | Selects documents if the array field is a specified size.                                                                |
+| Array      | $all           | Matches arrays that contain all elements specified in the query.                                                         |
+
+### Update Operators
+
+| **Category** | **Operator** | **Description**                                                                                   |
+|--------------|--------------|---------------------------------------------------------------------------------------------------|
+| Field        | $set         | Sets the value of a field in a document.                                                          |
+| Field        | $unset       | Removes the specified field from a document.                                                      |
+| Field        | $rename      | Renames a field.                                                                                  |
+| Field        | $inc         | Increments the value of the field by the specified amount.                                        |
+| Field        | $min         | Only updates the field if the specified value is less than the existing field value.              |
+| Field        | $max         | Only updates the field if the specified value is greater than the existing field value.           |
+| Field        | $mul         | Multiplies the value of the field by the specified amount.                                        |
+| Field        | $currentDate | Sets the value of a field to current date either as a Date or a Timestamp.                        |
+| Array        | $addToSet    | *(partially implemented)* Adds elements to an array only if they do not already exist in the set. |
+| Array        | $pop         | Removes the first or last item of an array.                                                       |
+| Array        | $push        | *(partially implemented)* Adds an item to an array.                                               |
+| Array        | $pullAll     | Removes all matching values from an array.                                                        |
 
 
 Storage Adapters
@@ -117,12 +136,12 @@ Storage adapters work with a specific storage format and are in charge reading a
 ### External Adapters
 
 - `jsonstor-mongodb` : Documents are stored on a MongoDB server.
+  See: [https://github.com/liquicode/jsonstor-mongodb](https://github.com/liquicode/jsonstor-mongodb).
+
+- `jsonstor-excel` : Documents are stored in an Excel spreadsheet.
+  See: [https://github.com/liquicode/jsonstor-mongodb](https://github.com/liquicode/jsonstor-mongodb).
 
 ### Planned Adapters:
-
-- File Based
-	- `jsonstor-csvfile` : Data is stored in a single CSV file.
-	- `jsonstor-excel` : Data is stored in an Excel spreadsheet.
 
 - Document Databases
 	- `jsonstor-couchdb` : Documents are stored on a CouchDB server.
@@ -143,13 +162,13 @@ Storage Filters
 ---------------------------------------------------------------------
 
 Storage filters work with storage adapters to add functionality to your application.
-Since filters and adapters support the same storage interface,
-	they can be used interchangeably within your code.
+Since filters and adapters support the same storage interface, they can be used interchangeably within your code.
 Filters can be added to other filters allowing you to create your own data processing pipeline.
 Again, this pipeline can be directed to store data with any storage adapter.
 
 ### Built-In Filters
 
+- `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
 - `jsonstor-userinfo` : Adds user info and access controls to documents.
 
 ### External Filters
@@ -157,36 +176,8 @@ Again, this pipeline can be directed to store data with any storage adapter.
 
 ### Planned Filters
 
-- `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
 - `jsonstor-timestamps` : Adds `created` and `updated` timestamps to documents.
 - `jsonstor-wss-server` : Exports a storage over the network to storage wss-client.
 
 
-Considerations
----------------------------------------------------------------------
-
-- If your code performs a json stringify and parse to clone the `Criteria` parameter,
-	problems can occur when using regular expressions and when comparing fields to `undefined`.
-	In both of these cases, the cloned object will be stripped of these fields.
-	This leads to a failure of the `UserStorage` component as well as any or any other component
-		which clones the `Criteria` parameter.
-	To avoid this, consider using the `jsongin.SafeClone` function from the
-		[@liquicode/jsongin](https://www.npmjs.com/package/@liquicode/jsongin) library.
-	The SafeClone function will not strip these fields.
-	`jsonstor` already includes this library.
-	A couple rules of thumb can be applied:
-	1) Avoid explicitly specifying `undefined` in `Criteria` (e.g. `$eq: undefined`).
-		If you need to test for the presence of a field in a document, use the `$exists` operator instead.
-	2) Use the string representation of a regular expression rather than the Javascript notation.
-		Use `$regex: "^hello"` rather than `$regex: /^hello/`.
-		Note that this also precludes using implicit `$eq` with regular expressions (e.g. `name: /^joe/`).
-		You will need to use `$regex` operator in such cases: `name: { $regex: "^joe" }`.
-
-- Strict comparison between two objects requires that all fields appear in both objects, have the same (strict)
-	value, and also appear in the same order within the objects.
-	As software systems of any sort are likely to massage and dissect the data objects they work with,
-		it is not recommended to rely upon the consistency of an object's internal order.
-	Performing any `$eq` comparisons requires that fields in both document and criteria objects match the same order.
-	If this is too strict for your needs, you can use the more loose `eqx` operator if you want to match
-		fields, values, but not the field order.
 

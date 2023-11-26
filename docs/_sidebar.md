@@ -10,15 +10,15 @@
 
 - References
 
-	- [Storage Interface](guides/Storage%Interface.md)
-	- [Storage Adapters](guides/Storage%Adapters.md)
-	- [Storage Filters](guides/Storage%Filters.md)
+	- [Storage Interface](guides/Storage%20Interface.md)
+	- [Storage Adapters](guides/Storage%20Adapters.md)
+	- [Storage Filters](guides/Storage%20Filters.md)
 
 - Operators
 
-	- [Query Operators](guides/Query%20Operators.md)
+	<!-- - [Query Operators](guides/Query%20Operators.md)
 	- [Projection Operators](guides/Projection%20Operators.md)
-	- [Update Operators](guides/Update%20Operators.md)
+	- [Update Operators](guides/Update%20Operators.md) -->
 
 <hr>
 
