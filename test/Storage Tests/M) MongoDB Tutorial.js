@@ -2,17 +2,20 @@
 
 const assert = require( 'assert' );
 
-module.exports = function ( Storage, Options )
+module.exports = function ( Storage, TestOptions )
 {
+
+	if ( typeof TestOptions === 'undefined' ) { TestOptions = {}; }
+	TestOptions.ReturnDocuments = true;
 
 
 	//---------------------------------------------------------------------
 	async function reset_data( Documents )
 	{
 		let result = null;
-		result = await Storage.DropStorage( Options );
+		result = await Storage.DropStorage( TestOptions );
 		assert.ok( result );
-		result = await Storage.InsertMany( Documents, Options );
+		result = await Storage.InsertMany( Documents, TestOptions );
 		return result;
 	}
 
@@ -91,7 +94,7 @@ module.exports = function ( Storage, Options )
 					// as the query filter parameter to the find method.
 					results = await Storage.FindMany(
 						{
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 5 );
 				} );
 
@@ -109,7 +112,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							status: 'D'
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -128,7 +131,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							status: { $in: [ 'A', 'D' ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 5 );
 				} );
 
@@ -148,7 +151,7 @@ module.exports = function ( Storage, Options )
 						{
 							status: 'A',
 							qty: { $lt: 30 },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -171,7 +174,7 @@ module.exports = function ( Storage, Options )
 									{ status: 'A' },
 									{ qty: { $lt: 30 } },
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -195,7 +198,7 @@ module.exports = function ( Storage, Options )
 									{ qty: { $lt: 30 } },
 									{ "size.h": { $gte: 10 } },
 								],
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -274,7 +277,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'size.uom': 'in'
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -285,7 +288,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'size.h': { $lt: 15 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 				} );
 
@@ -299,7 +302,7 @@ module.exports = function ( Storage, Options )
 							'size.h': { $lt: 15 },
 							'size.uom': 'in',
 							status: 'D'
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -317,14 +320,14 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							size: { h: 14, w: 21, uom: 'cm' }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 
 					// does not match any documents in the inventory collection
 					results = await Storage.FindMany(
 						{
 							size: { w: 21, h: 14, uom: 'cm' }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 0 );
 				} );
 
@@ -404,7 +407,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: [ 'red', 'blank' ],
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].item === 'notebook' );
 				} );
@@ -417,7 +420,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $all: [ 'red', 'blank' ] },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ].item === 'journal' );
 					assert.ok( results[ 1 ].item === 'notebook' );
@@ -440,7 +443,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: 'red',
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ].item === 'journal' );
 					assert.ok( results[ 1 ].item === 'notebook' );
@@ -456,7 +459,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							dim_cm: { $gt: 25 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].item === 'planner' );
 				} );
@@ -478,7 +481,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							dim_cm: { $gt: 15, $lt: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 				} );
 
@@ -490,7 +493,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							dim_cm: { $elemMatch: { $gt: 22, $lt: 30 } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -501,7 +504,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'dim_cm.1': { $gt: 25 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -512,7 +515,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $size: 3 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -593,7 +596,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							instock: { warehouse: 'A', qty: 5 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].item === 'journal' );
 				} );
@@ -613,7 +616,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'instock.qty': { $lte: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 5 );
 				} );
 
@@ -625,7 +628,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'instock.0.qty': { $lte: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ].item === 'journal' );
 					assert.ok( results[ 1 ].item === 'notebook' );
@@ -647,7 +650,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							instock: { $elemMatch: { qty: 5, warehouse: 'A' } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 
 					// queries for documents where the instock array has at least one embedded
@@ -655,7 +658,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							instock: { $elemMatch: { qty: { $gt: 10, $lte: 20 } } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -668,7 +671,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							'instock.qty': { $gt: 10, $lte: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 
 					// queries for documents where the instock array has at least one embedded
@@ -679,7 +682,7 @@ module.exports = function ( Storage, Options )
 						{
 							'instock.qty': 5,
 							'instock.warehouse': 'A'
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 
 				} );
@@ -732,7 +735,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: null
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -751,7 +754,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: { $type: 10 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -769,7 +772,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: { $exists: false }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 

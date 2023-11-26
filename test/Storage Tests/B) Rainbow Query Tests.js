@@ -2,10 +2,13 @@
 
 const assert = require( 'assert' );
 
-module.exports = function ( Storage, Options )
+module.exports = function ( Storage, TestOptions )
 {
 
+	if ( typeof TestOptions === 'undefined' ) { TestOptions = {}; }
+	TestOptions.ReturnDocuments = true;
 
+	
 	//---------------------------------------------------------------------
 	let RainbowData =
 	{
@@ -79,9 +82,9 @@ module.exports = function ( Storage, Options )
 			{
 				try
 				{
-					let result = await Storage.DropStorage( Options );
+					let result = await Storage.DropStorage( TestOptions );
 					assert.ok( result );
-					result = await Storage.InsertOne( RainbowData, Options );
+					result = await Storage.InsertOne( RainbowData, TestOptions );
 					assert.ok( result );
 					return;
 				}
@@ -105,12 +108,12 @@ module.exports = function ( Storage, Options )
 
 			it( `should not perform matching on nested fields using implicit $eq`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { o: { n: 3.14 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { o: { n: 3.14 } }, null, TestOptions ) ).length === 0 );
 			} );
 
 			it( `should not perform matching on nested fields using explicit $eq`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { o: { n: { $eq: 3.14 } } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { o: { n: { $eq: 3.14 } } }, null, TestOptions ) ).length === 0 );
 			} );
 
 		} );
@@ -121,12 +124,12 @@ module.exports = function ( Storage, Options )
 
 			it( `should perform matching on nested fields using implicit $eq and dot notation`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { 'o.n': 3.14 }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { 'o.n': 3.14 }, null, TestOptions ) ).length === 1 );
 			} );
 
 			it( `should perform matching on nested fields using explicit $eq and dot notation`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { 'o.n': { $eq: 3.14 } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { 'o.n': { $eq: 3.14 } }, null, TestOptions ) ).length === 1 );
 			} );
 
 		} );
@@ -147,13 +150,13 @@ module.exports = function ( Storage, Options )
 			it( `should perform strict equality (===) on 'bns'`, async () => 
 			{
 				// Explicit
-				assert.ok( ( await Storage.FindMany( { b: { $eq: true } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $eq: 3.14 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $eq: 'abc' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $eq: true } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $eq: 3.14 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $eq: 'abc' } }, null, TestOptions ) ).length === 1 );
 				// Implicit
-				assert.ok( ( await Storage.FindMany( { b: true }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: 3.14 }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: 'abc' }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: true }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: 3.14 }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: 'abc' }, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -175,7 +178,7 @@ module.exports = function ( Storage, Options )
 							// u: undefined,
 						}
 					}
-				}, null, Options );
+				}, null, TestOptions );
 				assert.ok( result );
 				assert.ok( result.length === 1 );
 
@@ -191,7 +194,7 @@ module.exports = function ( Storage, Options )
 						// r: /expression/,
 						// u: undefined,
 					}
-				}, null, Options );
+				}, null, TestOptions );
 				assert.ok( result );
 				assert.ok( result.length === 1 );
 
@@ -214,7 +217,7 @@ module.exports = function ( Storage, Options )
 							// undefined,
 						]
 					}
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 				// Implicit
 				assert.ok( ( await Storage.FindMany( {
 					a: [
@@ -227,20 +230,20 @@ module.exports = function ( Storage, Options )
 						// /expression/,
 						// undefined,
 					]
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
 			it( `should not perform loose equality (==) on 'bns'`, async () => 
 			{
 				// Explicit
-				assert.ok( ( await Storage.FindMany( { b: { $eq: '1' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $eq: '3.14' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s0: { $eq: 0 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: { $eq: '1' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $eq: '3.14' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s0: { $eq: 0 } }, null, TestOptions ) ).length === 0 );
 				// Implicit
-				assert.ok( ( await Storage.FindMany( { b: '1' }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: '3.14' }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s0: 0 }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: '1' }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: '3.14' }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s0: 0 }, null, TestOptions ) ).length === 0 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -260,7 +263,7 @@ module.exports = function ( Storage, Options )
 							b: true,
 						}
 					}
-				}, null, Options ) ).length === 0 );
+				}, null, TestOptions ) ).length === 0 );
 				// Implicit
 				assert.ok( ( await Storage.FindMany( {
 					o: {
@@ -273,7 +276,7 @@ module.exports = function ( Storage, Options )
 						// u: undefined,
 						b: true,
 					}
-				}, null, Options ) ).length === 0 );
+				}, null, TestOptions ) ).length === 0 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -293,7 +296,7 @@ module.exports = function ( Storage, Options )
 							true,
 						]
 					}
-				}, null, Options ) ).length === 0 );
+				}, null, TestOptions ) ).length === 0 );
 				// Implicit
 				assert.ok( ( await Storage.FindMany( {
 					a: [
@@ -306,7 +309,7 @@ module.exports = function ( Storage, Options )
 						// undefined,
 						true,
 					]
-				}, null, Options ) ).length === 0 );
+				}, null, TestOptions ) ).length === 0 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -315,7 +318,7 @@ module.exports = function ( Storage, Options )
 				// Explicit
 				//NOTE: Comparing to undefined will result in unexpected behaviors.
 				// assert.ok( ( await Storage.FindMany( { l: { $eq: undefined } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { u: { $eq: null } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { u: { $eq: null } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			// //---------------------------------------------------------------------
@@ -344,13 +347,13 @@ module.exports = function ( Storage, Options )
 			//---------------------------------------------------------------------
 			it( `should perform strict inequality (!==) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $ne: true } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $ne: 3.14 } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s: { $ne: 'abc' } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: { $ne: true } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $ne: 3.14 } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s: { $ne: 'abc' } }, null, TestOptions ) ).length === 0 );
 
-				assert.ok( ( await Storage.FindMany( { b: { $ne: false } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $ne: 42 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $ne: '123' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $ne: false } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $ne: 42 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $ne: '123' } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -369,7 +372,7 @@ module.exports = function ( Storage, Options )
 							b: true,
 						}
 					}
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -388,16 +391,16 @@ module.exports = function ( Storage, Options )
 							true,
 						]
 					}
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
 			it( `should not perform loose inequality (!=) on 'bns'`, async () => 
 			{// Does this test make any sense? Is it trying to prove a negative?
 				// These tests always fail because the values are of different types.
-				assert.ok( ( await Storage.FindMany( { b: { $ne: '0' } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $ne: '3.14' } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s0: { $ne: 0 } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $ne: '0' } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $ne: '3.14' } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s0: { $ne: 0 } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -416,7 +419,7 @@ module.exports = function ( Storage, Options )
 							b: true,
 						}
 					}
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -435,7 +438,7 @@ module.exports = function ( Storage, Options )
 							true,
 						]
 					}
-				}, null, Options ) ).length === 1 );
+				}, null, TestOptions ) ).length === 1 );
 			} );
 
 		} );
@@ -454,20 +457,20 @@ module.exports = function ( Storage, Options )
 
 			it( `should perform strict comparison (>=) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $gte: true } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $gte: 3.14 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $gte: 'abc' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $gte: true } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $gte: 3.14 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $gte: 'abc' } }, null, TestOptions ) ).length === 1 );
 
-				assert.ok( ( await Storage.FindMany( { b: { $gte: false } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $gte: 3 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $gte: '123' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $gte: false } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $gte: 3 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $gte: '123' } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			it( `should not perform loose comparison (>=) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $gte: '0' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $gte: '3' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s: { $gte: 0 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: { $gte: '0' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $gte: '3' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s: { $gte: 0 } }, null, TestOptions ) ).length === 0 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -476,7 +479,7 @@ module.exports = function ( Storage, Options )
 				// Explicit
 				//NOTE: Comparing to undefined will result in unexpected behaviors.
 				// assert.ok( ( await Storage.FindMany( { l: { $gte: undefined } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { u: { $gte: null } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { u: { $gte: null } }, null, TestOptions ) ).length === 1 );
 			} );
 
 		} );
@@ -495,17 +498,17 @@ module.exports = function ( Storage, Options )
 
 			it( `should perform strict comparison (>=) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $gt: false } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $gt: 3 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $gt: '123' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $gt: false } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $gt: 3 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $gt: '123' } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			it( `should not perform loose comparison (>=) on 'bns'`, async () => 
 			{
 				// These values are always not $gte because of different types.
-				assert.ok( ( await Storage.FindMany( { b: { $gt: '0' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $gt: '3' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s: { $gt: 0 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: { $gt: '0' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $gt: '3' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s: { $gt: 0 } }, null, TestOptions ) ).length === 0 );
 			} );
 
 		} );
@@ -524,16 +527,16 @@ module.exports = function ( Storage, Options )
 
 			it( `should perform strict comparison (<=) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $lte: true } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $lte: 4 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $lte: 'def' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b: { $lte: true } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $lte: 4 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $lte: 'def' } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			it( `should not perform loose comparison (<=) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b: { $lte: '1' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $lte: '4' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s0: { $lte: 0 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b: { $lte: '1' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $lte: '4' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s0: { $lte: 0 } }, null, TestOptions ) ).length === 0 );
 			} );
 
 			//---------------------------------------------------------------------
@@ -542,7 +545,7 @@ module.exports = function ( Storage, Options )
 				// Explicit
 				//NOTE: Comparing to undefined will result in unexpected behaviors.
 				// assert.ok( ( await Storage.FindMany( { l: { $lte: undefined } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { u: { $lte: null } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { u: { $lte: null } }, null, TestOptions ) ).length === 1 );
 			} );
 
 		} );
@@ -561,16 +564,16 @@ module.exports = function ( Storage, Options )
 
 			it( `should perform strict comparison (<) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b0: { $lt: true } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { n: { $lt: 4 } }, null, Options ) ).length === 1 );
-				assert.ok( ( await Storage.FindMany( { s: { $lt: 'def' } }, null, Options ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { b0: { $lt: true } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { n: { $lt: 4 } }, null, TestOptions ) ).length === 1 );
+				assert.ok( ( await Storage.FindMany( { s: { $lt: 'def' } }, null, TestOptions ) ).length === 1 );
 			} );
 
 			it( `should not perform loose comparison (<) on 'bns'`, async () => 
 			{
-				assert.ok( ( await Storage.FindMany( { b0: { $lt: '1' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { n: { $lt: '4' } }, null, Options ) ).length === 0 );
-				assert.ok( ( await Storage.FindMany( { s0: { $lt: 1 } }, null, Options ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { b0: { $lt: '1' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { n: { $lt: '4' } }, null, TestOptions ) ).length === 0 );
+				assert.ok( ( await Storage.FindMany( { s0: { $lt: 1 } }, null, TestOptions ) ).length === 0 );
 			} );
 
 		} );

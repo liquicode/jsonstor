@@ -4,7 +4,7 @@
 const LIB_UUID = require( 'uuid' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-const StorageBase = require( '../StorageBase' );
+// const jsonstor = require( '../jsonstor' )();
 
 
 module.exports = {
@@ -12,7 +12,7 @@ module.exports = {
 	FilterName: 'jsonstor-userinfo',
 	FilterDescription: 'Adds user ownership and document sharing to an existing storage.',
 
-	GetFilter: function ( Storage, Settings )
+	GetFilter: function ( jsonstor, Storage, Settings )
 	{
 
 		//=====================================================================
@@ -35,7 +35,8 @@ module.exports = {
 
 
 		//=====================================================================
-		let Filter = StorageBase( null, Settings );
+		let Filter = jsonstor.StorageInterface();
+		Filter.Settings = Settings;
 		Filter.Storage = Storage;
 
 
@@ -133,11 +134,12 @@ module.exports = {
 		//---------------------------------------------------------------------
 		function get_storage_options( Options ) 
 		{
-			if ( typeof Options === 'undefined' ) { Options = {}; }
-			Options = jsongin.Clone( Options );
-			Options.ReturnDocuments = true;
-			delete Options.User;
-			return Options;
+			if ( jsongin.ShortType( Options ) !== 'o' ) { Options = {}; }
+			let storage_options = JSON.parse( JSON.stringify( Options ) );
+			storage_options.ReturnDocuments = true;
+			// delete storage_options.User;
+			if ( jsongin.ShortType( storage_options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
+			return storage_options;
 		};
 
 
@@ -222,9 +224,11 @@ module.exports = {
 						{
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let count = await Storage.Count( criteria, get_storage_options( Options ) );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							// let User = Options.User;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let count = await Storage.Count( criteria, storage_options );
 							resolve( count );
 							return;
 						}
@@ -257,11 +261,13 @@ module.exports = {
 							if ( jsongin.ShortType( Document ) !== 'o' ) { throw PARAMETER_ERROR( 'Document', 'object' ); }
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let user_info = new_user_info( User );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							// let User = Options.User;
+							let user_info = new_user_info( storage_options.User );
 							let document = jsongin.Clone( Document );
 							document[ Settings.UserInfoField ] = user_info;
-							let modified = await Storage.InsertOne( document, get_storage_options( Options ) );
+							let modified = await Storage.InsertOne( document, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -303,8 +309,10 @@ module.exports = {
 							if ( jsongin.ShortType( Documents ) !== 'a' ) { throw PARAMETER_ERROR( 'Documents', 'array' ); }
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let user_info = new_user_info( User );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							// let User = Options.User;
+							let user_info = new_user_info( storage_options.User );
 							let modified = [];
 							for ( let index = 0; index < Documents.length; index++ )
 							{
@@ -312,7 +320,7 @@ module.exports = {
 								document[ Settings.UserInfoField ] = user_info;
 								modified.push( document );
 							}
-							modified = await Storage.InsertMany( modified, get_storage_options( Options ) );
+							modified = await Storage.InsertMany( modified, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								modified.forEach( document => clean_document( document ) );
@@ -354,9 +362,10 @@ module.exports = {
 						{
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let document = await Storage.FindOne( criteria, Projection, get_storage_options( Options ) );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let document = await Storage.FindOne( criteria, Projection, storage_options );
 							if ( document ) { clean_document( document ); }
 							resolve( document );
 							return;
@@ -389,9 +398,10 @@ module.exports = {
 						{
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let documents = await Storage.FindMany( criteria, Projection, get_storage_options( Options ) );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let documents = await Storage.FindMany( criteria, Projection, storage_options );
 							documents.forEach( document => clean_document( document ) );
 							resolve( documents );
 							return;
@@ -425,21 +435,22 @@ module.exports = {
 							if ( jsongin.ShortType( Updates ) !== 'o' ) { Updates = {}; }
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
 							if ( !Updates.$set ) { Updates.$set = {}; }
 							Updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let document = await Storage.FindOne( criteria, null, get_storage_options( Options ) );
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let document = await Storage.FindOne( criteria, null, storage_options );
 							let error = null;
 							if ( !document ) { error = READ_ACCESS_ERROR(); }
-							else if ( !Filter.User( User ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+							else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
 								resolve( null );
 								return;
 							}
-							let modified = await Storage.UpdateOne( criteria, Updates, get_storage_options( Options ) );
+							let modified = await Storage.UpdateOne( criteria, Updates, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -481,25 +492,26 @@ module.exports = {
 							if ( jsongin.ShortType( Updates ) !== 'o' ) { Updates = {}; }
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
 							if ( !Updates.$set ) { Updates.$set = {}; }
 							Updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let modified_ids = await Storage.FindMany( criteria, { _id: 1 }, get_storage_options( Options ) );
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let modified_ids = await Storage.FindMany( criteria, { _id: 1 }, storage_options );
 							let modified = [];
 							for ( let index = 0; index < modified_ids.length; index++ )
 							{
 								let document_id = modified_ids[ index ]._id;
-								let document = await Storage.FindOne( { _id: document_id }, null, get_storage_options( Options ) );
+								let document = await Storage.FindOne( { _id: document_id }, null, storage_options );
 								let error = null;
 								if ( !document ) { error = READ_ACCESS_ERROR(); }
-								else if ( !Filter.User( User ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+								else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
 								if ( error )
 								{
 									if ( Settings.ThrowPermissionErrors ) { throw error; }
 									continue;
 								}
-								document = await Storage.UpdateOne( { _id: document_id }, Updates, get_storage_options( Options ) );
+								document = await Storage.UpdateOne( { _id: document_id }, Updates, storage_options );
 								modified.push( document );
 							}
 							if ( Options.ReturnDocuments )
@@ -544,13 +556,13 @@ module.exports = {
 							if ( jsongin.ShortType( Document ) !== 'o' ) { throw PARAMETER_ERROR( 'Document', 'object' ); }
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let storage_options = get_storage_options( Options );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
 							let document = await Storage.FindOne( criteria, null, storage_options );
 							let error = null;
 							if ( !document ) { error = READ_ACCESS_ERROR(); }
-							else if ( !Filter.User( User ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+							else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
@@ -599,19 +611,20 @@ module.exports = {
 						{
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let document = await Storage.FindOne( criteria, null, get_storage_options( Options ) );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let document = await Storage.FindOne( criteria, null, storage_options );
 							let error = null;
 							if ( !document ) { error = READ_ACCESS_ERROR(); }
-							else if ( !Filter.User( User ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+							else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
 								resolve( null );
 								return;
 							}
-							let modified = await Storage.DeleteOne( criteria, get_storage_options( Options ) );
+							let modified = await Storage.DeleteOne( criteria, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -652,24 +665,25 @@ module.exports = {
 						{
 							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
-							let User = Options.User;
-							let criteria = Filter.User( User ).Criteria( Criteria );
-							let modified_ids = await Storage.FindMany( criteria, { _id: 1 }, get_storage_options( Options ) );
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let modified_ids = await Storage.FindMany( criteria, { _id: 1 }, storage_options );
 							let modified = [];
 							for ( let index = 0; index < modified_ids.length; index++ )
 							{
 								let document_id = modified_ids[ index ]._id;
-								let document = await Storage.FindOne( { _id: document_id }, null, get_storage_options( Options ) );
+								let document = await Storage.FindOne( { _id: document_id }, null, storage_options );
 								let error = null;
 								if ( !document ) { error = READ_ACCESS_ERROR(); }
-								else if ( !Filter.User( User ).CanRead( document ) ) { error = READ_ACCESS_ERROR(); }
-								else if ( !Filter.User( User ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+								else if ( !Filter.User( storage_options ).CanRead( document ) ) { error = READ_ACCESS_ERROR(); }
+								else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
 								if ( error )
 								{
 									if ( Settings.ThrowPermissionErrors ) { throw error; }
 									continue;
 								}
-								document = await Storage.DeleteOne( { _id: document_id }, get_storage_options( Options ) );
+								document = await Storage.DeleteOne( { _id: document_id }, storage_options );
 								modified.push( document );
 							}
 							if ( Options.ReturnDocuments )
@@ -698,16 +712,30 @@ module.exports = {
 		//=====================================================================
 
 
-		Filter.User = function ( User )
+		Filter.User = function ( UserOptions )
 		{
 			let ThisUser = {};
 
 			//---------------------------------------------------------------------
-			if ( jsongin.ShortType( User ) !== 'o' ) { throw PARAMETER_ERROR( 'User', 'object' ); }
+			if ( jsongin.ShortType( UserOptions ) !== 'o' ) { throw PARAMETER_ERROR( 'UserOptions', 'object' ); }
+
+			//---------------------------------------------------------------------
+			let User = UserOptions.User;
+			if ( jsongin.ShortType( User ) !== 'o' ) { throw PARAMETER_ERROR( 'UserOptions.User', 'object' ); }
 			if ( jsongin.ShortType( User.user_id ) !== 's' ) { throw PARAMETER_ERROR( 'User.user_id', 'string' ); }
 			if ( jsongin.ShortType( User.user_role ) !== 's' ) { throw PARAMETER_ERROR( 'User.user_role', 'string' ); }
 			// if ( ![ 'admin', 'super', 'user' ].includes( User.user_role ) ) { throw new Error( `Unknown value for User.user_role: [${User.user_role}]` ); }
 
+
+			// //---------------------------------------------------------------------
+			// function get_user_options() 
+			// {
+			// 	if ( jsongin.ShortType( Options ) !== 'o' ) { Options = {}; }
+			// 	let user_options = jsongin.SafeClone( Options );
+			// 	user_options.ReturnDocuments = true;
+			// 	user_options.User = User;
+			// 	return user_options;
+			// };
 
 			//---------------------------------------------------------------------
 			ThisUser.CanShare = function CanShare( Document )
@@ -830,7 +858,7 @@ module.exports = {
 						try
 						{
 							let criteria = ThisUser.Criteria( Criteria );
-							let documents = await Storage.FindMany( criteria, null, { ReturnDocuments: true } );
+							let documents = await Storage.FindMany( criteria, null, UserOptions );
 							let modified = [];
 							for ( let index = 0; index < documents.length; index++ )
 							{
@@ -840,7 +868,7 @@ module.exports = {
 									// Set the new owner.
 									document[ Settings.UserInfoField ].owner_id = SetOwnerID;
 									document[ Settings.UserInfoField ].updated_at = zulu_timestamp();
-									document = await Storage.ReplaceOne( { _id: document._id }, document, { ReturnDocuments: true } );
+									document = await Storage.ReplaceOne( { _id: document._id }, document, UserOptions );
 									clean_document( document );
 									modified.push( document );
 								}
@@ -883,7 +911,7 @@ module.exports = {
 							let criteria = ThisUser.Criteria( Criteria );
 							let modified = [];
 							let timestamp = zulu_timestamp();
-							let documents = await Storage.FindMany( criteria, null, { ReturnDocuments: true } );
+							let documents = await Storage.FindMany( criteria, null, UserOptions );
 							for ( let index = 0; index < documents.length; index++ )
 							{
 								let document = documents[ index ];
@@ -917,7 +945,7 @@ module.exports = {
 								if ( is_modified )
 								{
 									document[ Settings.UserInfoField ].updated_at = timestamp;
-									document = await Storage.ReplaceOne( { _id: document._id }, document, { ReturnDocuments: true } );
+									document = await Storage.ReplaceOne( { _id: document._id }, document, UserOptions );
 									clean_document( document );
 									modified.push( document );
 								}
@@ -955,7 +983,7 @@ module.exports = {
 							let criteria = ThisUser.Criteria( Criteria );
 							let modified = [];
 							let timestamp = zulu_timestamp();
-							let documents = await Storage.FindMany( criteria, null, { ReturnDocuments: true } );
+							let documents = await Storage.FindMany( criteria, null, UserOptions );
 							for ( let index = 0; index < documents.length; index++ )
 							{
 								let document = documents[ index ];
@@ -965,7 +993,7 @@ module.exports = {
 								document[ Settings.UserInfoField ].writers = Writers;
 								document[ Settings.UserInfoField ].public = !!MakePublic;
 								document[ Settings.UserInfoField ].updated_at = timestamp;
-								document = await Storage.ReplaceOne( { _id: document._id }, document, { ReturnDocuments: true } );
+								document = await Storage.ReplaceOne( { _id: document._id }, document, UserOptions );
 								clean_document( document );
 								modified.push( document );
 							}
@@ -1007,7 +1035,7 @@ module.exports = {
 							let criteria = ThisUser.Criteria( Criteria );
 							let modified = [];
 							let timestamp = zulu_timestamp();
-							let documents = await Storage.FindMany( criteria, null, { ReturnDocuments: true } );
+							let documents = await Storage.FindMany( criteria, null, UserOptions );
 							for ( let index = 0; index < documents.length; index++ )
 							{
 								let document = documents[ index ];
@@ -1041,7 +1069,7 @@ module.exports = {
 								if ( is_modified )
 								{
 									document[ Settings.UserInfoField ].updated_at = timestamp;
-									document = await Storage.ReplaceOne( document );
+									document = await Storage.ReplaceOne( { _id: document._id }, document, UserOptions );
 									clean_document( document );
 									modified.push( document );
 								}

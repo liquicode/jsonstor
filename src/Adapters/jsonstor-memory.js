@@ -3,14 +3,14 @@
 const LIB_UUID = require( 'uuid' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-const StorageBase = require( '../StorageBase' );
+// const jsonstor = require( '../jsonstor' )();
 
 module.exports = {
 
 	AdapterName: 'jsonstor-memory',
 	AdapterDescription: 'Documents are stored in memory and are not persisted to disk.',
 
-	GetAdapter: function ( Settings )
+	GetAdapter: function ( jsonstor, Settings )
 	{
 
 
@@ -18,7 +18,8 @@ module.exports = {
 		/*
 			Settings = {}
 		*/
-		let Storage = StorageBase( this, Settings );
+		let Storage = jsonstor.StorageInterface();
+		Storage.Settings = Settings;
 		Storage.store = [];
 		Storage.is_dirty = false;
 

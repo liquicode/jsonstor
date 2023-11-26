@@ -5,14 +5,14 @@ const LIB_PATH = require( 'path' );
 const LIB_UUID = require( 'uuid' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-const StorageBase = require( '../StorageBase' );
+// const jsonstor = require( '../jsonstor' )();
 
 module.exports = {
 
 	AdapterName: 'jsonstor-folder',
 	AdapterDescription: 'Each document is stored in its own file in a single folder.',
 
-	GetAdapter: function ( Settings )
+	GetAdapter: function ( jsonstor, Settings )
 	{
 
 
@@ -24,6 +24,11 @@ module.exports = {
 		*/
 		if ( jsongin.ShortType( Settings ) !== 'o' ) { throw new Error( `This adapter requires a Settings parameter.` ); }
 		if ( jsongin.ShortType( Settings.Path ) !== 's' ) { throw new Error( `This adapter requires a Settings.Path string parameter.` ); }
+
+
+		//=====================================================================
+		let Storage = jsonstor.StorageInterface();
+		Storage.Settings = Settings;
 
 
 		//=====================================================================
@@ -89,10 +94,6 @@ module.exports = {
 			LIB_FS.unlinkSync( filename );
 			return;
 		}
-
-
-		//=====================================================================
-		let Storage = StorageBase( this, Settings );
 
 
 		//=====================================================================

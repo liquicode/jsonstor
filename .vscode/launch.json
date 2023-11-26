@@ -74,7 +74,7 @@
 			"internalConsoleOptions": "openOnSessionStart",
 		},
 		{
-			"name": "400) jsonstor-mongodb Tests",
+			"name": "400) jsonstor-userinfo Tests",
 			"type": "node",
 			"request": "launch",
 			"skipFiles": [
@@ -86,72 +86,6 @@
 				"-u",
 				"bdd",
 				"test/400*.js",
-				"--timeout",
-				"0",
-				"--slow",
-				"10",
-				"--colors",
-			],
-			"outputCapture": "std",
-			"internalConsoleOptions": "openOnSessionStart",
-		},
-		{
-			"name": "410) jsonstor-excel Tests",
-			"type": "node",
-			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
-			"args": [
-				"-u",
-				"bdd",
-				"test/410*.js",
-				"--timeout",
-				"0",
-				"--slow",
-				"10",
-				"--colors",
-			],
-			"outputCapture": "std",
-			"internalConsoleOptions": "openOnSessionStart",
-		},
-		{
-			"name": "500) jsonstor-userinfo Storage Tests",
-			"type": "node",
-			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
-			"args": [
-				"-u",
-				"bdd",
-				"test/500*.js",
-				"--timeout",
-				"0",
-				"--slow",
-				"10",
-				"--colors",
-			],
-			"outputCapture": "std",
-			"internalConsoleOptions": "openOnSessionStart",
-		},
-		{
-			"name": "510) jsonstor-userinfo Permissions Tests",
-			"type": "node",
-			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
-			"args": [
-				"-u",
-				"bdd",
-				"test/510*.js",
 				"--timeout",
 				"0",
 				"--slow",
@@ -183,22 +117,6 @@
 				"10",
 				"--colors",
 			],
-			"outputCapture": "std",
-			"internalConsoleOptions": "openOnSessionStart",
-		},
-		{
-			"name": "--- Slush Tests ---------------------",
-		},
-		{
-			"name": "xlsx-test",
-			"type": "node",
-			"request": "launch",
-			"skipFiles": [
-				"<node_internals>/**"
-			],
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/~slush/xlsx-test.js",
-			"args": [],
 			"outputCapture": "std",
 			"internalConsoleOptions": "openOnSessionStart",
 		},

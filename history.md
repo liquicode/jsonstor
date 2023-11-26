@@ -5,10 +5,10 @@
 # Project History
 
 
-2023-11-xx: v0.0.4
+2023-11-26: v0.0.5
 ---------------------------------------------------------------------
 
-- TODO: Rename `json-storages` to `jsonstor`.
-- TODO: Build external plugin projects.
-- TODO: Restructure tests so that external plugins can easily validate compliance.
+- Rename `json-storages` to `jsonstor`.
+- Build external plugin projects.
+- Restructure tests so that external plugins can easily validate compliance.
 

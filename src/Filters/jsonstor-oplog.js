@@ -4,7 +4,7 @@
 const LIB_FS = require( 'fs' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-const StorageBase = require( '../StorageBase' );
+// const jsonstor = require( '../jsonstor' )();
 
 
 module.exports = {
@@ -12,7 +12,7 @@ module.exports = {
 	FilterName: 'jsonstor-oplog',
 	FilterDescription: 'Traces storage function calls and outputs messages to console, file, or other log targets.',
 
-	GetFilter: function ( Storage, Settings )
+	GetFilter: function ( jsonstor, Storage, Settings )
 	{
 		//=====================================================================
 		/*
@@ -37,7 +37,8 @@ module.exports = {
 
 
 		//=====================================================================
-		let Filter = StorageBase( null, Settings );
+		let Filter = jsonstor.StorageInterface();
+		Filter.Settings = Settings;
 		Filter.Storage = Storage;
 
 

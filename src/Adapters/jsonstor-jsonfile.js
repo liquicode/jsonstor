@@ -5,15 +5,15 @@ const LIB_FS = require( 'fs' );
 const LIB_PATH = require( 'path' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-const StorageBase = require( '../StorageBase' );
-const MemoryStorage = require( './jsonstor-memory' );
+// const jsonstor = require( '../jsonstor' )();
+const MemoryStorageAdapter = require( './jsonstor-memory' );
 
 module.exports = {
 
 	AdapterName: 'jsonstor-jsonfile',
 	AdapterDescription: 'Documents are cached in memory and persisted to a single json file.',
 
-	GetAdapter: function ( Settings )
+	GetAdapter: function ( jsonstor, Settings )
 	{
 
 
@@ -30,8 +30,9 @@ module.exports = {
 
 
 		//=====================================================================
-		let Storage = StorageBase( this, Settings );
-		Storage.MemoryStorage = MemoryStorage.GetAdapter( Settings );
+		let Storage = jsonstor.StorageInterface();
+		Storage.Settings = Settings;
+		Storage.MemoryStorage = MemoryStorageAdapter.GetAdapter( jsonstor, Settings );
 		read_storage();
 
 

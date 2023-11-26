@@ -3,19 +3,13 @@
 const LIB_UUID = require( 'uuid' );
 const assert = require( 'assert' );
 
-module.exports = function ( Storage, DocumentCount, DefaultOptions )
+module.exports = function ( Storage, DocumentCount, TestOptions )
 {
 
+	if ( typeof TestOptions === 'undefined' ) { TestOptions = {}; }
+	TestOptions.ReturnDocuments = true;
 
 	let SessionID = LIB_UUID.v4();
-	let Options = { ReturnDocuments: true };
-	if ( DefaultOptions )
-	{
-		for ( let key in DefaultOptions )
-		{
-			Options[ key ] = DefaultOptions[ key ];
-		}
-	}
 
 
 	//---------------------------------------------------------------------
@@ -27,8 +21,8 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 		before(
 			async function ()
 			{
-				// let result = await Storage.DropStorage( Options );
-				// assert.ok( result );
+				let result = await Storage.DropStorage( TestOptions );
+				assert.ok( result );
 				return;
 			} );
 
@@ -47,7 +41,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				};
 
 				// Insert the document.
-				document = await Storage.InsertOne( document, Options );
+				document = await Storage.InsertOne( document, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
@@ -56,7 +50,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 			}
 
 			// Get the document count.
-			let count = await Storage.Count( { session_id: SessionID }, Options );
+			let count = await Storage.Count( { session_id: SessionID }, TestOptions );
 			assert.ok( count === DocumentCount );
 
 		} );
@@ -65,7 +59,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 		//---------------------------------------------------------------------
 		it( `should delete ${DocumentCount} documents, all at once`, async () => 
 		{
-			let documents = await Storage.DeleteMany( { session_id: SessionID }, Options );
+			let documents = await Storage.DeleteMany( { session_id: SessionID }, TestOptions );
 			assert.ok( documents );
 			assert.ok( documents.length === DocumentCount );
 			for ( let number = 1; number <= DocumentCount; number++ )
@@ -78,7 +72,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				assert.ok( document.order_number === number );
 			}
 			// Get the document count.
-			let count = await Storage.Count( { session_id: SessionID }, Options );
+			let count = await Storage.Count( { session_id: SessionID }, TestOptions );
 			assert.ok( count === 0 );
 		} );
 
@@ -99,7 +93,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 			}
 
 			// Insert the documents.
-			documents = await Storage.InsertMany( documents, Options );
+			documents = await Storage.InsertMany( documents, TestOptions );
 
 			// Validate the documents.
 			assert.ok( documents.length === DocumentCount );
@@ -114,7 +108,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 			}
 
 			// Validate the document count.
-			let count = await Storage.Count( { session_id: SessionID }, Options );
+			let count = await Storage.Count( { session_id: SessionID }, TestOptions );
 			assert.ok( count === DocumentCount );
 
 		} );
@@ -128,7 +122,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				let document = await Storage.FindOne( {
 					session_id: SessionID,
 					sequence: number,
-				}, null, Options );
+				}, null, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
@@ -146,14 +140,14 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				let document = await Storage.FindOne( {
 					session_id: SessionID,
 					sequence: number,
-				}, null, Options );
+				}, null, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
 				assert.ok( document.sequence === number );
 				assert.ok( document.order_number === number );
 				document.update1 = 42;
-				document = await Storage.ReplaceOne( { _id: document._id }, document, Options );
+				document = await Storage.ReplaceOne( { _id: document._id }, document, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
@@ -167,7 +161,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 		//---------------------------------------------------------------------
 		it( `should read ${DocumentCount} documents, all at once`, async () => 
 		{
-			let documents = await Storage.FindMany( { session_id: SessionID }, null, Options );
+			let documents = await Storage.FindMany( { session_id: SessionID }, null, TestOptions );
 			assert.ok( documents );
 			assert.ok( documents.length === DocumentCount );
 			for ( let number = 1; number <= DocumentCount; number++ )
@@ -193,7 +187,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 					sequence: number,
 				}, {
 					$set: { order_number: ( number + 1 ) }
-				}, Options );
+				}, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
@@ -211,7 +205,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				session_id: SessionID
 			}, {
 				$set: { update2: 3.14 }
-			}, Options );
+			}, TestOptions );
 			assert.ok( documents );
 			assert.ok( documents.length === DocumentCount );
 			for ( let number = 1; number <= DocumentCount; number++ )
@@ -231,13 +225,13 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 		//---------------------------------------------------------------------
 		it( `should delete ${DocumentCount} documents, one at a time`, async () => 
 		{
-			let documents = await Storage.FindMany( { session_id: SessionID }, null, Options );
+			let documents = await Storage.FindMany( { session_id: SessionID }, null, TestOptions );
 			assert.ok( documents );
 			assert.ok( documents.length === DocumentCount );
 			for ( let number = 1; number <= DocumentCount; number++ )
 			{
 				let document = documents[ number - 1 ];
-				document = await Storage.DeleteOne( { _id: document._id }, Options );
+				document = await Storage.DeleteOne( { _id: document._id }, TestOptions );
 				assert.ok( document );
 				assert.ok( document._id );
 				assert.ok( document.session_id === SessionID );
@@ -247,7 +241,7 @@ module.exports = function ( Storage, DocumentCount, DefaultOptions )
 				assert.ok( document.update2 === 3.14 );
 			}
 			// Get the document count.
-			let count = await Storage.Count( { session_id: SessionID }, Options );
+			let count = await Storage.Count( { session_id: SessionID }, TestOptions );
 			assert.ok( count === 0 );
 		} );
 

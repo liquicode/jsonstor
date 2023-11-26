@@ -2,8 +2,12 @@
 
 const assert = require( 'assert' );
 
-module.exports = function ( Storage, Options )
+module.exports = function ( Storage, TestOptions )
 {
+
+	if ( typeof TestOptions === 'undefined' ) { TestOptions = {}; }
+	TestOptions.ReturnDocuments = true;
+
 	let results = null;
 
 
@@ -11,9 +15,9 @@ module.exports = function ( Storage, Options )
 	async function reset_data( Documents )
 	{
 		let result = null;
-		result = await Storage.DropStorage( Options );
+		result = await Storage.DropStorage( TestOptions );
 		assert.ok( result );
-		result = await Storage.InsertMany( Documents, Options );
+		result = await Storage.InsertMany( Documents, TestOptions );
 		return result;
 	}
 
@@ -63,7 +67,7 @@ module.exports = function ( Storage, Options )
 						results = await Storage.FindMany(
 							{
 								tags: { $eq: [ "A", "B" ] }
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 2 );
 						assert.ok( results[ 0 ]._id === 3 );
 						assert.ok( results[ 1 ]._id === 5 );
@@ -75,7 +79,7 @@ module.exports = function ( Storage, Options )
 						results = await Storage.FindMany(
 							{
 								tags: [ "A", "B" ]
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 2 );
 						assert.ok( results[ 0 ]._id === 3 );
 						assert.ok( results[ 1 ]._id === 5 );
@@ -110,12 +114,12 @@ module.exports = function ( Storage, Options )
 						results = await Storage.FindMany(
 							{
 								company: "MongoDB",
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 1 );
 						results = await Storage.FindMany(
 							{
 								company: { $eq: "MongoDB" },
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 1 );
 					} );
 
@@ -128,7 +132,7 @@ module.exports = function ( Storage, Options )
 						results = await Storage.FindMany(
 							{
 								company: { $eq: /MongoDB/ }
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 0 );
 					} );
 
@@ -142,14 +146,14 @@ module.exports = function ( Storage, Options )
 						results = await Storage.FindMany(
 							{
 								company: /MongoDB/
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 2 );
 
 						//NOTE: Regular expression objects are not always supported.
 						results = await Storage.FindMany(
 							{
 								company: { $regex: /MongoDB/ }
-							}, null, Options );
+							}, null, TestOptions );
 						assert.ok( results.length === 2 );
 					} );
 
@@ -194,7 +198,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $gt: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -237,7 +241,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $gte: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -273,7 +277,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $in: [ 5, 15 ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -284,7 +288,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $in: [ "home", "school" ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -298,7 +302,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $in: [ /^be/, /^st/ ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -341,7 +345,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $lt: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -384,7 +388,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $lte: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -430,7 +434,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $ne: 20 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -465,7 +469,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $nin: [ 5, 15 ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 					assert.ok( results[ 0 ].quantity === 350 );
 					assert.ok( results[ 1 ].quantity === undefined );
@@ -478,7 +482,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $nin: [ "school" ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].item === 'Maps' );
 				} );
@@ -550,7 +554,7 @@ module.exports = function ( Storage, Options )
 									{ price: { $ne: 1.99 } },
 									{ price: { $exists: true } }
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ].item === 'nuts' );
 					assert.ok( results[ 1 ].item === 'dryers' );
@@ -560,7 +564,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							price: { $ne: 1.99, $exists: true },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ].item === 'nuts' );
 					assert.ok( results[ 1 ].item === 'dryers' );
@@ -592,7 +596,7 @@ module.exports = function ( Storage, Options )
 											]
 									},
 								],
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -612,7 +616,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							price: { $not: { $gt: 1.99 } },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -626,7 +630,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: { $not: /^p.*/ },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ].item === 'nuts' );
 					assert.ok( results[ 1 ].item === 'bolts' );
@@ -637,7 +641,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: { $not: { $regex: "^p.*" } },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ].item === 'nuts' );
 					assert.ok( results[ 1 ].item === 'bolts' );
@@ -649,7 +653,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							item: { $not: { $regex: /^p.*/ } },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ].item === 'nuts' );
 					assert.ok( results[ 1 ].item === 'bolts' );
@@ -679,7 +683,7 @@ module.exports = function ( Storage, Options )
 									{ price: 1.99 },
 									{ sale: true },
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -699,7 +703,7 @@ module.exports = function ( Storage, Options )
 									{ qty: { $lt: 20 } },
 									{ sale: true },
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
@@ -718,7 +722,7 @@ module.exports = function ( Storage, Options )
 									{ sale: true },
 									{ sale: { $exists: false } },
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].item === 'plutonium' );
 				} );
@@ -742,7 +746,7 @@ module.exports = function ( Storage, Options )
 									{ quantity: { $lt: 20 } },
 									{ price: 10 }
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -757,13 +761,13 @@ module.exports = function ( Storage, Options )
 									{ quantity: 20 },
 									{ quantity: 50 },
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					// Equivalent to:
 					results = await Storage.FindMany(
 						{
 							quantity: { $in: [ 20, 50 ] },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -784,7 +788,7 @@ module.exports = function ( Storage, Options )
 									},
 									{ price: { $gt: 50 } }
 								]
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -832,7 +836,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							quantity: { $exists: true, $nin: [ 5, 15 ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -860,14 +864,14 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							saffron: { $exists: true },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 7 );
 
 					// results consist of those documents that do not contain the field cinnamon
 					results = await Storage.FindMany(
 						{
 							cinnamon: { $exists: false },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -907,7 +911,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							zipCode: { $type: 2 },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 /* string */ );
 					assert.ok( results[ 0 ]._id === 1 );
 					assert.ok( results[ 1 ]._id === 5 );
@@ -919,7 +923,7 @@ module.exports = function ( Storage, Options )
 							//NOTE: Difference from official docs.
 							// Changed type from 1 to 16.
 							zipCode: { $type: 16 /* int */ },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ]._id === 2 );
 					assert.ok( results[ 1 ]._id === 3 );
@@ -934,7 +938,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							zipCode: { $type: 'string' },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 					assert.ok( results[ 0 ]._id === 1 );
 					assert.ok( results[ 1 ]._id === 5 );
@@ -946,7 +950,7 @@ module.exports = function ( Storage, Options )
 							//NOTE: Difference from official docs.
 							// Changed type from 'double' to 'int'.
 							zipCode: { $type: 'int' },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ]._id === 2 );
 					assert.ok( results[ 1 ]._id === 3 );
@@ -961,7 +965,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							zipCode: { $type: 'number' },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ]._id === 2 );
 					assert.ok( results[ 1 ]._id === 3 );
@@ -988,7 +992,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							classAverage: { $type: [ 2, 1 ] },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -1012,7 +1016,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							classAverage: { $type: [ 'string', 'double' ] },
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 				} );
 
@@ -1090,7 +1094,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							tags: { $all: [ 'appliance', 'school', 'book' ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 					assert.ok( results[ 0 ].code === 'xyz' );
 					assert.ok( results[ 1 ].code === 'abc' );
@@ -1111,7 +1115,7 @@ module.exports = function ( Storage, Options )
 										{ $elemMatch: { num: 100, color: "green" } }
 									]
 							}
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 					assert.ok( results[ 0 ].code === 'efg' );
 					assert.ok( results[ 1 ].code === 'ijk' );
@@ -1125,7 +1129,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							"qty.num": { $all: [ 50 ] }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ].code === 'abc' );
 				} );
@@ -1153,7 +1157,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							results: { $elemMatch: { $gte: 80, $lt: 85 } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 				} );
 
@@ -1175,7 +1179,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							results: { $elemMatch: { product: "xyz", score: { $gte: 8 } } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 					assert.ok( results[ 0 ]._id === 3 );
 				} );
@@ -1197,7 +1201,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							results: { $elemMatch: { product: "xyz" } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 3 );
 					assert.ok( results[ 0 ]._id === 1 );
 					assert.ok( results[ 1 ]._id === 2 );
@@ -1207,7 +1211,7 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							results: { $elemMatch: { product: { $ne: "xyz" } } }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 4 );
 					assert.ok( results[ 0 ]._id === 1 );
 					assert.ok( results[ 1 ]._id === 2 );
@@ -1240,28 +1244,28 @@ module.exports = function ( Storage, Options )
 					results = await Storage.FindMany(
 						{
 							results: { $size: 0 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 
 					// documents where result is an array and has a size of 1
 					results = await Storage.FindMany(
 						{
 							results: { $size: 1 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 1 );
 
 					// documents where result is an array and has a size of 2
 					results = await Storage.FindMany(
 						{
 							results: { $size: 2 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 0 );
 
 					// documents where result is an array and has a size of 3
 					results = await Storage.FindMany(
 						{
 							results: { $size: 3 }
-						}, null, Options );
+						}, null, TestOptions );
 					assert.ok( results.length === 2 );
 				} );
 
