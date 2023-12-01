@@ -2,7 +2,7 @@
 
 ![logo](media/jsonstor-banner-large.png)
 
-# jsonstor <small>(v0.0.9)</small>
+# jsonstor <small>(v0.0.10)</small>
 
 <hr>
 
