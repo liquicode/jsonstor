@@ -4,7 +4,6 @@
 const LIB_FS = require( 'fs' );
 
 const jsongin = require( '@liquicode/jsongin' )();
-// const jsonstor = require( '../jsonstor' )();
 
 
 module.exports = {

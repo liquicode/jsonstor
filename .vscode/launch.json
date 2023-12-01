@@ -8,6 +8,28 @@
 			"name": "--- Tests ---------------------",
 		},
 		{
+			"name": "010) SqlExpression Tests",
+			"type": "node",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${workspaceFolder}",
+			"program": "${workspaceFolder}/node_modules/mocha/bin/mocha",
+			"args": [
+				"-u",
+				"bdd",
+				"test/010*.js",
+				"--timeout",
+				"0",
+				"--slow",
+				"10",
+				"--colors",
+			],
+			"outputCapture": "std",
+			"internalConsoleOptions": "openOnSessionStart",
+		},
+		{
 			"name": "100) jsonstor-memory Tests",
 			"type": "node",
 			"request": "launch",
