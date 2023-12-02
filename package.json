@@ -1,6 +1,6 @@
 {
 	"name": "@liquicode/jsonstor",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"description": "A centralized MongoDB-style interface to work with multiple database products and implementations.",
 	"license": "MIT",
 	"homepage": "http://jsonstor.liquicode.com",
