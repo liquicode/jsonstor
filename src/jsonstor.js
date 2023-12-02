@@ -166,7 +166,10 @@ module.exports = function ( AdapterName, Settings, Filters )
 		for ( let index = 0; index < Values.length; index++ )
 		{
 			let expression = get_sql_expression( Values[ index ], Options );
-			expressions.push( expression );
+			if ( expression )
+			{
+				expressions.push( expression );
+			}
 		}
 		return expressions;
 	}
@@ -246,6 +249,7 @@ module.exports = function ( AdapterName, Settings, Filters )
 										let expr = '';
 										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
 										else { expr = sub_expressions.join( ' AND ' ); }
+										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
 									break;
@@ -257,6 +261,7 @@ module.exports = function ( AdapterName, Settings, Filters )
 										let expr = '';
 										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
 										else { expr = sub_expressions.join( ' OR ' ); }
+										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
 									break;
@@ -268,12 +273,14 @@ module.exports = function ( AdapterName, Settings, Filters )
 										let expr = '';
 										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
 										else { expr = sub_expressions.join( ' OR ' ); }
+										if ( !expr ) { continue; }
 										expressions.push( `(NOT (${expr}))` );
 									}
 									break;
 								case '$not':
 									{
 										let expr = get_sql_expression( value, options );
+										if ( !expr ) { continue; }
 										expressions.push( `(NOT ${expr})` );
 									}
 									break;
