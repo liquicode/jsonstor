@@ -23,16 +23,17 @@
     ✔ It should support the $nor operator
     ✔ It should support the $not operator
     ✔ It should support complex logic
-    ✔ It should ignore document paths by default
+    ✔ It should allow document paths
     ✔ It should use custom identifier quotes
     ✔ It should use custom string literal quotes
+    ✔ It should respect Options.AllowedFields
 
   100) jsonstor-memory Tests
     A) CRUD Tests
       ✔ should insert 100 documents, one at a time
       ✔ should delete 100 documents, all at once
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (25ms)
+      ✔ should read 100 documents, one at a time (24ms)
       ✔ should replace 100 documents, one at a time (20ms)
       ✔ should read 100 documents, all at once
       ✔ should update 100 documents, one at a time (13ms)
@@ -200,15 +201,15 @@
 
   200) jsonstor-folder Tests
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (119ms)
-      ✔ should delete 100 documents, all at once (64ms)
-      ✔ should insert 100 documents, all at once (117ms)
-      ✔ should read 100 documents, one at a time (519ms)
-      ✔ should replace 100 documents, one at a time (1184ms)
+      ✔ should insert 100 documents, one at a time (123ms)
+      ✔ should delete 100 documents, all at once (65ms)
+      ✔ should insert 100 documents, all at once (123ms)
+      ✔ should read 100 documents, one at a time (520ms)
+      ✔ should replace 100 documents, one at a time (1190ms)
       ✔ should read 100 documents, all at once (10ms)
-      ✔ should update 100 documents, one at a time (690ms)
-      ✔ should update 100 documents, all at once (97ms)
-      ✔ should delete 100 documents, one at a time (77ms)
+      ✔ should update 100 documents, one at a time (692ms)
+      ✔ should update 100 documents, all at once (99ms)
+      ✔ should delete 100 documents, one at a time (78ms)
     B) Rainbow Tests
       Nested Fields (explicit)
         ✔ should not perform matching on nested fields using implicit $eq
@@ -247,17 +248,17 @@
         ✔ should not perform loose comparison (<) on 'bns'
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
-        ✔ Should add documents and set permissions (34ms)
-        ✔ Alice should read all documents and write all documents (79ms)
-        ✔ Bob should read some documents and write some documents (60ms)
+        ✔ Should add documents and set permissions (33ms)
+        ✔ Alice should read all documents and write all documents (80ms)
+        ✔ Bob should read some documents and write some documents (61ms)
         ✔ Eve should read some documents and write some documents (45ms)
-        ✔ Public objects should be readable by everyone (38ms)
-        ✔ Public objects should only be writable by the owner (39ms)
-        ✔ Should not allow readers to update documents (42ms)
+        ✔ Public objects should be readable by everyone (41ms)
+        ✔ Public objects should only be writable by the owner (45ms)
+        ✔ Should not allow readers to update documents (46ms)
     C) MongoDB Tutorial
       Query Documents (https://www.mongodb.com/docs/manual/tutorial/query-documents/)
         Select All Documents in a Collection
-          ✔ Match All Documents with an Empty Object {}
+          ✔ Match All Documents with an Empty Object {} (6ms)
         Specify Equality Condition
           ✔ Match Fields with Implicit Equality
         Specify Conditions Using Query Operators
@@ -270,7 +271,7 @@
           ✔ Match Fields Using AND and OR
       Query on Embedded/Nested Documents (https://www.mongodb.com/docs/manual/tutorial/query-embedded-documents/)
         Query on Embedded/Nested Documents
-          ✔ Specify Equality Match on a Nested Field (7ms)
+          ✔ Specify Equality Match on a Nested Field
           ✔ Specify Match using Query Operator
           ✔ Specify AND Condition
         Match an Embedded/Nested Document
@@ -326,7 +327,7 @@
         Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
           ✔ Match Document Fields
         Comparison Operator: $ne (https://www.mongodb.com/docs/manual/reference/operator/query/ne/)
-          ✔ Match Document Fields
+          ✔ Match Document Fields (9ms)
         Comparison Operator: $nin (https://www.mongodb.com/docs/manual/reference/operator/query/nin/)
           ✔ Select on Unmatching Documents
           ✔ Select on Elements Not in an Array
@@ -347,13 +348,13 @@
           ✔ Nested $or Clauses
       Element Query Operators
         Element Query Operator: $exists (https://www.mongodb.com/docs/manual/reference/operator/query/exists/)
-          ✔ Exists and Not Equal To (14ms)
+          ✔ Exists and Not Equal To (10ms)
           ✔ Null Values (18ms)
         Element Query Operator: $type (https://www.mongodb.com/docs/manual/reference/operator/query/type/)
           ✔ Querying by Data Type (BSON Code)
           ✔ Querying by Data Type (BSON Alias)
           ✔ Querying by Data Type ("number")
-          ✔ Querying by Multiple Data Type (BSON Code) (11ms)
+          ✔ Querying by Multiple Data Type (BSON Code) (12ms)
           ✔ Querying by Multiple Data Type (BSON Alias) (6ms)
       Array Query Operators
         Array Query Operator: $all (https://www.mongodb.com/docs/manual/reference/operator/query/all/)
@@ -361,25 +362,25 @@
           ✔ Use $all with $elemMatch
           ✔ Use $all with Scalar Values
         Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match (8ms)
-          ✔ Array of Embedded Documents (10ms)
-          ✔ Single Query Condition (8ms)
+          ✔ Element Match (10ms)
+          ✔ Array of Embedded Documents (11ms)
+          ✔ Single Query Condition (7ms)
         Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
           ✔ Use $size to Match Array Sizes (13ms)
     Z) Ad-Hoc Tests
-      ✔ should not match explicit nested fields
+      ✔ should not match explicit nested fields (7ms)
 
   300) jsonstor-jsonfile Tests
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (570ms)
+      ✔ should insert 100 documents, one at a time (566ms)
       ✔ should delete 100 documents, all at once (6ms)
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (22ms)
-      ✔ should replace 100 documents, one at a time (603ms)
+      ✔ should read 100 documents, one at a time (20ms)
+      ✔ should replace 100 documents, one at a time (596ms)
       ✔ should read 100 documents, all at once
-      ✔ should update 100 documents, one at a time (593ms)
+      ✔ should update 100 documents, one at a time (596ms)
       ✔ should update 100 documents, all at once (6ms)
-      ✔ should delete 100 documents, one at a time (560ms)
+      ✔ should delete 100 documents, one at a time (582ms)
     B) Rainbow Tests
       Nested Fields (explicit)
         ✔ should not perform matching on nested fields using implicit $eq
@@ -419,9 +420,9 @@
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
         ✔ Should add documents and set permissions (53ms)
-        ✔ Alice should read all documents and write all documents (86ms)
-        ✔ Bob should read some documents and write some documents (66ms)
-        ✔ Eve should read some documents and write some documents (56ms)
+        ✔ Alice should read all documents and write all documents (87ms)
+        ✔ Bob should read some documents and write some documents (71ms)
+        ✔ Eve should read some documents and write some documents (59ms)
         ✔ Public objects should be readable by everyone (59ms)
         ✔ Public objects should only be writable by the owner (57ms)
         ✔ Should not allow readers to update documents (57ms)
@@ -525,15 +526,15 @@
           ✔ Querying by Data Type (BSON Alias)
           ✔ Querying by Data Type ("number")
           ✔ Querying by Multiple Data Type (BSON Code)
-          ✔ Querying by Multiple Data Type (BSON Alias) (6ms)
+          ✔ Querying by Multiple Data Type (BSON Alias)
       Array Query Operators
         Array Query Operator: $all (https://www.mongodb.com/docs/manual/reference/operator/query/all/)
           ✔ Use $all to Match Values
           ✔ Use $all with $elemMatch
           ✔ Use $all with Scalar Values
         Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match
-          ✔ Array of Embedded Documents (6ms)
+          ✔ Element Match (6ms)
+          ✔ Array of Embedded Documents
           ✔ Single Query Condition (6ms)
         Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
           ✔ Use $size to Match Array Sizes
@@ -541,6 +542,6 @@
       ✔ should not match explicit nested fields
 
 
-  351 passing (7s)
+  352 passing (7s)
 
 ```

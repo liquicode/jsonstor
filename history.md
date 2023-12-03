@@ -5,6 +5,13 @@
 # Project History
 
 
+v0.0.11 (2023-12-02)
+---------------------------------------------------------------------
+
+- More fixes to `SqlExpression()`.
+	- Added `Options.AllowedFields` to control field processing.
+
+
 v0.0.10 (2023-12-02)
 ---------------------------------------------------------------------
 

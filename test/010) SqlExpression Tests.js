@@ -234,14 +234,14 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should ignore document paths by default`, () => 
+	it( `It should allow document paths`, () => 
 	{
 		let criteria = {
 			rating: { $ne: 2 },
 			'user.name': 3.14,
 		};
 		let expr = jsonstor.SqlExpression( criteria );
-		assert.strictEqual( expr, '(rating <> 2)' );
+		assert.strictEqual( expr, '((rating <> 2) AND (user.name = 3.14))' );
 	} );
 
 
@@ -260,6 +260,28 @@ describe( '010) SqlExpression Tests', () =>
 		let criteria = { name: 'Alice' };
 		let expr = jsonstor.SqlExpression( criteria, { StringLiteralQuotes: "'" } );
 		assert.strictEqual( expr, `(name = 'Alice')` );
+	} );
+
+
+	//---------------------------------------------------------------------
+	it( `It should respect Options.AllowedFields`, () => 
+	{
+		let criteria = {
+			rating: { $ne: 2 },
+			'user.name': 3.14,
+		};
+		let options = {
+			AllowedFields: {
+				rating: { short_type: 'n' }
+			}
+		};
+		let expr = jsonstor.SqlExpression( criteria, options );
+		assert.strictEqual( expr, '(rating <> 2)' );
+
+		options.AllowedFields[ 'user.name' ] = { short_type: 'n' };
+		expr = jsonstor.SqlExpression( criteria, options );
+		assert.strictEqual( expr, '((rating <> 2) AND (user.name = 3.14))' );
+
 	} );
 
 
