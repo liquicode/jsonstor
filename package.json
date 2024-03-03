@@ -1,7 +1,7 @@
 {
 	"name": "@liquicode/jsonstor",
 	"version": "0.0.12",
-	"description": "A centralized MongoDB-style interface to work with multiple database products and implementations.",
+	"description": "A centralized MongoDB-style interface to work with a variety of database products and platforms.",
 	"license": "MIT",
 	"homepage": "http://jsonstor.liquicode.com",
 	"repository": {
@@ -18,6 +18,7 @@
 	"main": "src/jsonstor.js",
 	"scripts": {
 		"test": "mocha -u bdd tests/*.js --timeout 0 --slow 10 --colors",
+		"build docs": "npx @liquicode/devops --tasks .\\build\\devops.tasks.js build_docs",
 		"publish version": "npx @liquicode/devops --tasks .\\build\\devops.tasks.js publish_version",
 		"start new version": "npx @liquicode/devops --tasks .\\build\\devops.tasks.js start_new_version"
 	},
@@ -36,13 +37,13 @@
 		"compare"
 	],
 	"devDependencies": {
-		"mocha": "^10.2.0",
-		"webpack": "^5.89.0",
+		"mocha": "^10.3.0",
+		"webpack": "^5.90.3",
 		"webpack-cli": "^5.1.4",
 		"webpack-node-externals": "^3.0.0"
 	},
 	"dependencies": {
-		"@liquicode/jsongin": "",
+		"@liquicode/jsongin": "0.0.19",
 		"lockfile": "^1.0.4",
 		"uuid": "^9.0.1"
 	}

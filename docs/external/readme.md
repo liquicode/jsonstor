@@ -1,10 +1,10 @@
-# jsonstor
-[`@liquiode/jsonstor`](https://github.com/liquicode/jsonstor) (v0.0.11)
+# @liquicode/devops
+
+> Home: [http://devops.liquicode.com](http://devops.liquicode.com)
+>
+> Version: 0.0.19
 
 ### A centralized interface to work with multiple database products and implementations.
-
-
-Official Docs: [http://jsonstor.liquicode.com](http://jsonstor.liquicode.com)
 
 
 Overview

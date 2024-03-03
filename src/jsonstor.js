@@ -3,12 +3,21 @@
 const LIB_FS = require( 'fs' );
 const LIB_PATH = require( 'path' );
 
-const jsongin = require( '@liquicode/jsongin' )();
+const jsongin = require( '@liquicode/jsongin' );
 
 module.exports = function ( AdapterName, Settings, Filters )
 {
+	let _package = require( '../package.json' );
 	let jsonstor = {
 
+
+		//---------------------------------------------------------------------
+		// Library
+		Library: {
+			name: _package.name,
+			url: _package.homepage,
+			version: _package.version,
+		},
 
 		//---------------------------------------------------------------------
 		Adapters: {},

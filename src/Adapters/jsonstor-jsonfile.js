@@ -4,7 +4,7 @@
 const LIB_FS = require( 'fs' );
 const LIB_PATH = require( 'path' );
 
-const jsongin = require( '@liquicode/jsongin' )();
+const jsongin = require( '@liquicode/jsongin' );
 // const jsonstor = require( '../jsonstor' )();
 const MemoryStorageAdapter = require( './jsonstor-memory' );
 

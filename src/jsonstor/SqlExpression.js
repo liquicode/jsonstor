@@ -1,6 +1,6 @@
 'use strict';
 
-const jsongin = require( '@liquicode/jsongin' )();
+const jsongin = require( '@liquicode/jsongin' );
 
 module.exports = function ( jsonstor )
 {

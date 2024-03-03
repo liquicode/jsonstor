@@ -21,7 +21,7 @@ module.exports = function ( Storage, TestOptions )
 
 
 	//---------------------------------------------------------------------
-	describe( 'C) MongoDB Tutorial', () =>
+	describe( 'M) MongoDB Tutorial', () =>
 	{
 
 

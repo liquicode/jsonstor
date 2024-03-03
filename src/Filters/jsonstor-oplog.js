@@ -3,7 +3,7 @@
 
 const LIB_FS = require( 'fs' );
 
-const jsongin = require( '@liquicode/jsongin' )();
+const jsongin = require( '@liquicode/jsongin' );
 
 
 module.exports = {

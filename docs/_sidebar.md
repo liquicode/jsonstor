@@ -4,7 +4,7 @@
 
 - jsonstor Docs
 
-	- [readme.md](external/readme.md)
+	- [Main](external/readme.md)
 
 <hr>
 
@@ -16,9 +16,11 @@
 
 - Operators
 
-	<!-- - [Query Operators](guides/Query%20Operators.md)
+<!--
+	- [Query Operators](guides/Query%20Operators.md)
 	- [Projection Operators](guides/Projection%20Operators.md)
-	- [Update Operators](guides/Update%20Operators.md) -->
+	- [Update Operators](guides/Update%20Operators.md)
+-->
 
 <hr>
 

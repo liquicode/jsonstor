@@ -1,8 +1,8 @@
-# @liquicode/devops
+# <%- Engine.Library.name %>
 
-> Home: [http://devops.liquicode.com](http://devops.liquicode.com)
+> Home: [<%- Engine.Library.url %>](<%- Engine.Library.url %>)
 >
-> Version: 0.0.19
+> Version: <%- Engine.Library.version %>
 
 ### A centralized interface to work with multiple database products and implementations.
 

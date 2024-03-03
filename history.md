@@ -1,11 +1,17 @@
-# jsonstor
-[`@liquiode/jsonstor`](https://github.com/liquicode/jsonstor)
+# @liquicode/jsonstor
 
 
 # Project History
 
 
-v0.0.11 (2023-12-02)
+v0.0.12
+---------------------------------------------------------------------
+
+- Updated npm library `@liquicode/jsongin` to `v0.0.20`.
+- Fixed test headings.
+
+
+v0.0.11 (2023-12-03)
 ---------------------------------------------------------------------
 
 - More fixes to `SqlExpression()`.

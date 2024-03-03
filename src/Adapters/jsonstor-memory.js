@@ -2,7 +2,7 @@
 
 const LIB_UUID = require( 'uuid' );
 
-const jsongin = require( '@liquicode/jsongin' )();
+const jsongin = require( '@liquicode/jsongin' );
 // const jsonstor = require( '../jsonstor' )();
 
 module.exports = {
