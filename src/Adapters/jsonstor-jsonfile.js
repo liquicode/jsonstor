@@ -196,6 +196,18 @@ module.exports = {
 
 
 		//=====================================================================
+		// FindMany2
+		//=====================================================================
+
+
+		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options ) 
+		{
+			let results = await Storage.MemoryStorage.FindMany( Criteria, Projection, Sort, MaxCount, Options );
+			return results;
+		};
+
+
+		//=====================================================================
 		// UpdateOne
 		//=====================================================================
 

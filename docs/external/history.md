@@ -4,9 +4,10 @@
 # Project History
 
 
-v0.0.14 (???)
+v0.0.14 (2024-05-20)
 ---------------------------------------------------------------------
 
+- Added FindMany2 function to the data interface: FindMany2( Criteria, Projection, Sort, Limit, Options )
 
 
 v0.0.12 (2024-03-03)

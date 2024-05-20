@@ -1,8 +1,8 @@
 # <%- Engine.Library.name %>
 
-> Home: [<%- Engine.Library.url %>](<%- Engine.Library.url %>)
+> Home: [<%- Context.Package.homepage %>](<%- Context.Package.homepage %>)
 >
-> Version: <%- Engine.Library.version %>
+> Version: <%- Context.Package.version %>
 
 ### A centralized interface to work with multiple database products and implementations.
 
@@ -60,6 +60,8 @@ Database Interface
 	Returns the first document satisfying `Criteria`.
 - `FindMany( Criteria, Projection, Options )` :
 	Returns all documents satisfying `Criteria`.
+- `FindMany2( Criteria, Projection, Sort, MaxCount, Options )` :
+	Returns all documents satisfying `Criteria`, optionally sorted and/or limited.
 - `UpdateOne( Criteria, Updates, Options )` :
 	Updates the first document satisfying `Criteria` with update operations found in `Updates`.
 - `UpdateMany( Criteria, Updates, Options )` :

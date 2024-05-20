@@ -1,8 +1,8 @@
 # @liquicode/devops
 
-> Home: [http://devops.liquicode.com](http://devops.liquicode.com)
+> Home: [http://jsonstor.liquicode.com](http://jsonstor.liquicode.com)
 >
-> Version: 0.0.19
+> Version: 0.0.14
 
 ### A centralized interface to work with multiple database products and implementations.
 
@@ -60,6 +60,8 @@ Database Interface
 	Returns the first document satisfying `Criteria`.
 - `FindMany( Criteria, Projection, Options )` :
 	Returns all documents satisfying `Criteria`.
+- `FindMany2( Criteria, Projection, Sort, MaxCount, Options )` :
+	Returns all documents satisfying `Criteria`, optionally sorted and/or limited.
 - `UpdateOne( Criteria, Updates, Options )` :
 	Updates the first document satisfying `Criteria` with update operations found in `Updates`.
 - `UpdateMany( Criteria, Updates, Options )` :

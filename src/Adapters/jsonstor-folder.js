@@ -110,7 +110,15 @@ module.exports = {
 					{
 						if ( LIB_FS.existsSync( Settings.Path ) )
 						{
-							LIB_FS.rmdirSync( Settings.Path, { recursive: true, force: true } );
+							// LIB_FS.rmdirSync( Settings.Path, { recursive: true, force: true } );
+							if ( process.version >= 'v14.14.0' )
+							{
+								LIB_FS.rmSync( Settings.Path, { recursive: true, force: true } );
+							}
+							else
+							{
+								LIB_FS.rmdirSync( Settings.Path, { recursive: true, force: true } );
+							}
 						}
 						resolve( true );
 						return;
@@ -348,6 +356,48 @@ module.exports = {
 								documents.push( document );
 							}
 						}
+						resolve( documents );
+					}
+					catch ( error )
+					{
+						reject( error );
+					}
+					return;
+				} );
+		};
+
+
+		//=====================================================================
+		// FindMany2
+		//=====================================================================
+
+
+		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options ) 
+		{
+			return new Promise(
+				async ( resolve, reject ) =>
+				{
+					try
+					{
+						if ( jsongin.ShortType( Options ) !== 'o' ) { Options = {}; }
+						let st_Criteria = jsongin.ShortType( Criteria );
+						if ( !'olu'.includes( st_Criteria ) ) { throw new Error( `Criteria must be an object, null, or undefined.` ); }
+						let documents = [];
+						let json_files = get_json_file_list();
+						for ( let index = 0; index < json_files.length; index++ )
+						{
+							let document = read_document( json_files[ index ] );
+							if ( 'lu'.includes( st_Criteria )
+								|| ( Object.keys( Criteria ).length === 0 )
+								|| jsongin.Query( document, Criteria )
+							)
+							{
+								document = jsongin.Project( document, Projection );
+								documents.push( document );
+							}
+							if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { break; }
+						}
+						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
 						resolve( documents );
 					}
 					catch ( error )

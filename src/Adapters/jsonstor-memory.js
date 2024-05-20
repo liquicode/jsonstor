@@ -283,6 +283,47 @@ module.exports = {
 
 
 		//=====================================================================
+		// FindMany2
+		//=====================================================================
+
+
+		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options ) 
+		{
+			return new Promise(
+				async ( resolve, reject ) =>
+				{
+					try
+					{
+						if ( jsongin.ShortType( Options ) !== 'o' ) { Options = {}; }
+						let st_Criteria = jsongin.ShortType( Criteria );
+						if ( !'olu'.includes( st_Criteria ) ) { throw new Error( `Criteria must be an object, null, or undefined.` ); }
+						let documents = [];
+						for ( let index = 0; index < Storage.store.length; index++ )
+						{
+							let test_document = Storage.store[ index ];
+							if ( 'lu'.includes( st_Criteria )
+								|| ( Object.keys( Criteria ).length === 0 )
+								|| jsongin.Query( test_document, Criteria )
+							)
+							{
+								test_document = jsongin.Project( test_document, Projection );
+								documents.push( test_document );
+							}
+							if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { break; }
+						}
+						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
+						resolve( documents );
+					}
+					catch ( error )
+					{
+						reject( error );
+					}
+					return;
+				} );
+		};
+
+
+		//=====================================================================
 		// UpdateOne
 		//=====================================================================
 
