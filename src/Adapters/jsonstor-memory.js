@@ -309,9 +309,9 @@ module.exports = {
 								test_document = jsongin.Project( test_document, Projection );
 								documents.push( test_document );
 							}
-							if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { break; }
 						}
 						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
+						if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { documents = documents.splice( 0, MaxCount ); }
 						resolve( documents );
 					}
 					catch ( error )

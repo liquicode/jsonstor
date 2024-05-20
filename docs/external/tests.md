@@ -33,10 +33,11 @@
       ✔ should insert 100 documents, one at a time
       ✔ should delete 100 documents, all at once
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (19ms)
-      ✔ should replace 100 documents, one at a time (18ms)
+      ✔ should read 100 documents, one at a time (18ms)
+      ✔ should replace 100 documents, one at a time (17ms)
       ✔ should read 100 documents, all at once
-      ✔ should update 100 documents, one at a time (13ms)
+      ✔ should read 5 documents, all at once and sorted
+      ✔ should update 100 documents, one at a time (12ms)
       ✔ should update 100 documents, all at once
       ✔ should delete 100 documents, one at a time
     B) Rainbow Tests
@@ -198,17 +199,19 @@
           ✔ Use $size to Match Array Sizes
     Z) Ad-Hoc Tests
       ✔ should not match explicit nested fields
+      ✔ should sort and limit in FindMany2
 
   200) jsonstor-folder Tests
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (94ms)
-      ✔ should delete 100 documents, all at once (49ms)
-      ✔ should insert 100 documents, all at once (92ms)
-      ✔ should read 100 documents, one at a time (433ms)
-      ✔ should replace 100 documents, one at a time (1041ms)
+      ✔ should insert 100 documents, one at a time (96ms)
+      ✔ should delete 100 documents, all at once (51ms)
+      ✔ should insert 100 documents, all at once (95ms)
+      ✔ should read 100 documents, one at a time (438ms)
+      ✔ should replace 100 documents, one at a time (1015ms)
       ✔ should read 100 documents, all at once (9ms)
-      ✔ should update 100 documents, one at a time (610ms)
-      ✔ should update 100 documents, all at once (84ms)
+      ✔ should read 5 documents, all at once and sorted (8ms)
+      ✔ should update 100 documents, one at a time (583ms)
+      ✔ should update 100 documents, all at once (78ms)
       ✔ should delete 100 documents, one at a time (66ms)
     B) Rainbow Tests
       Nested Fields (explicit)
@@ -248,13 +251,13 @@
         ✔ should not perform loose comparison (<) on 'bns'
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
-        ✔ Should add documents and set permissions (29ms)
-        ✔ Alice should read all documents and write all documents (71ms)
-        ✔ Bob should read some documents and write some documents (52ms)
-        ✔ Eve should read some documents and write some documents (44ms)
-        ✔ Public objects should be readable by everyone (34ms)
-        ✔ Public objects should only be writable by the owner (32ms)
-        ✔ Should not allow readers to update documents (39ms)
+        ✔ Should add documents and set permissions (27ms)
+        ✔ Alice should read all documents and write all documents (65ms)
+        ✔ Bob should read some documents and write some documents (57ms)
+        ✔ Eve should read some documents and write some documents (39ms)
+        ✔ Public objects should be readable by everyone (31ms)
+        ✔ Public objects should only be writable by the owner (33ms)
+        ✔ Should not allow readers to update documents (33ms)
     M) MongoDB Tutorial
       Query Documents (https://www.mongodb.com/docs/manual/tutorial/query-documents/)
         Select All Documents in a Collection
@@ -278,7 +281,7 @@
           ✔ Specify Equality Match on an Embedded Document
       Query an Array (https://www.mongodb.com/docs/manual/tutorial/query-arrays/)
         Match an Array
-          ✔ Match an Array Exactly (6ms)
+          ✔ Match an Array Exactly
           ✔ Match Array Elements
         Query an Array for an Element
           ✔ Match a Single Array Element
@@ -308,32 +311,32 @@
       Comparison Query Operators
         Comparison Operator: $eq (https://www.mongodb.com/docs/manual/reference/operator/query/eq/)
           Equals an Array Value
-            ✔ Match an Array Element (6ms)
+            ✔ Match an Array Element
             ✔ Match an Array Element Using Implicit $eq
           Regex Match Behaviour
-            ✔ $eq match on a string (10ms)
+            ✔ $eq match on a string
             ✔ $eq match on a regular expression
             ✔ Use the $in Operator with a Regular Expression
         Comparison Operator: $gt (https://www.mongodb.com/docs/manual/reference/operator/query/gt/)
-          ✔ Match Document Fields (8ms)
+          ✔ Match Document Fields
         Comparison Operator: $gte (https://www.mongodb.com/docs/manual/reference/operator/query/gte/)
-          ✔ Match Document Fields (6ms)
+          ✔ Match Document Fields
         Comparison Operator: $in (https://www.mongodb.com/docs/manual/reference/operator/query/in/)
-          ✔ Use the $in Operator to Match Values (6ms)
+          ✔ Use the $in Operator to Match Values
           ✔ Use the $in Operator to Match Values in an Array
           ✔ Use the $in Operator with a Regular Expression
         Comparison Operator: $lt (https://www.mongodb.com/docs/manual/reference/operator/query/lt/)
-          ✔ Match Document Fields (6ms)
+          ✔ Match Document Fields
         Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
-          ✔ Match Document Fields (6ms)
+          ✔ Match Document Fields
         Comparison Operator: $ne (https://www.mongodb.com/docs/manual/reference/operator/query/ne/)
-          ✔ Match Document Fields (7ms)
+          ✔ Match Document Fields
         Comparison Operator: $nin (https://www.mongodb.com/docs/manual/reference/operator/query/nin/)
-          ✔ Select on Unmatching Documents (6ms)
+          ✔ Select on Unmatching Documents
           ✔ Select on Elements Not in an Array
       Logical Query Operators
         Logical Operator: $and (https://www.mongodb.com/docs/manual/reference/operator/query/and/)
-          ✔ AND Queries With Multiple Expressions Specifying the Same Field
+          ✔ AND Queries With Multiple Expressions Specifying the Same Field (7ms)
           ✔ AND Queries With Multiple Expressions Specifying the Same Operator
         Logical Operator: $not (https://www.mongodb.com/docs/manual/reference/operator/query/not/)
           ✔ Match Document Fields
@@ -348,10 +351,10 @@
           ✔ Nested $or Clauses
       Element Query Operators
         Element Query Operator: $exists (https://www.mongodb.com/docs/manual/reference/operator/query/exists/)
-          ✔ Exists and Not Equal To (10ms)
-          ✔ Null Values (18ms)
+          ✔ Exists and Not Equal To (8ms)
+          ✔ Null Values (15ms)
         Element Query Operator: $type (https://www.mongodb.com/docs/manual/reference/operator/query/type/)
-          ✔ Querying by Data Type (BSON Code) (6ms)
+          ✔ Querying by Data Type (BSON Code)
           ✔ Querying by Data Type (BSON Alias)
           ✔ Querying by Data Type ("number")
           ✔ Querying by Multiple Data Type (BSON Code) (9ms)
@@ -362,25 +365,27 @@
           ✔ Use $all with $elemMatch
           ✔ Use $all with Scalar Values
         Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match (8ms)
-          ✔ Array of Embedded Documents (9ms)
+          ✔ Element Match (9ms)
+          ✔ Array of Embedded Documents (8ms)
           ✔ Single Query Condition
         Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
-          ✔ Use $size to Match Array Sizes (11ms)
+          ✔ Use $size to Match Array Sizes (10ms)
     Z) Ad-Hoc Tests
       ✔ should not match explicit nested fields (6ms)
+      ✔ should sort and limit in FindMany2 (13ms)
 
   300) jsonstor-jsonfile Tests
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (541ms)
+      ✔ should insert 100 documents, one at a time (473ms)
       ✔ should delete 100 documents, all at once
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (12ms)
-      ✔ should replace 100 documents, one at a time (584ms)
+      ✔ should read 100 documents, one at a time (11ms)
+      ✔ should replace 100 documents, one at a time (519ms)
       ✔ should read 100 documents, all at once
-      ✔ should update 100 documents, one at a time (579ms)
-      ✔ should update 100 documents, all at once
-      ✔ should delete 100 documents, one at a time (483ms)
+      ✔ should read 5 documents, all at once and sorted
+      ✔ should update 100 documents, one at a time (535ms)
+      ✔ should update 100 documents, all at once (6ms)
+      ✔ should delete 100 documents, one at a time (529ms)
     B) Rainbow Tests
       Nested Fields (explicit)
         ✔ should not perform matching on nested fields using implicit $eq
@@ -419,13 +424,13 @@
         ✔ should not perform loose comparison (<) on 'bns'
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
-        ✔ Should add documents and set permissions (43ms)
-        ✔ Alice should read all documents and write all documents (78ms)
-        ✔ Bob should read some documents and write some documents (54ms)
-        ✔ Eve should read some documents and write some documents (51ms)
-        ✔ Public objects should be readable by everyone (50ms)
-        ✔ Public objects should only be writable by the owner (54ms)
-        ✔ Should not allow readers to update documents (43ms)
+        ✔ Should add documents and set permissions (45ms)
+        ✔ Alice should read all documents and write all documents (77ms)
+        ✔ Bob should read some documents and write some documents (58ms)
+        ✔ Eve should read some documents and write some documents (48ms)
+        ✔ Public objects should be readable by everyone (45ms)
+        ✔ Public objects should only be writable by the owner (39ms)
+        ✔ Should not allow readers to update documents (46ms)
     M) MongoDB Tutorial
       Query Documents (https://www.mongodb.com/docs/manual/tutorial/query-documents/)
         Select All Documents in a Collection
@@ -533,15 +538,16 @@
           ✔ Use $all with $elemMatch
           ✔ Use $all with Scalar Values
         Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match (7ms)
-          ✔ Array of Embedded Documents (6ms)
+          ✔ Element Match
+          ✔ Array of Embedded Documents
           ✔ Single Query Condition
         Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
           ✔ Use $size to Match Array Sizes
     Z) Ad-Hoc Tests
       ✔ should not match explicit nested fields
+      ✔ should sort and limit in FindMany2 (37ms)
 
 
-  352 passing (6s)
+  358 passing (6s)
 
 ```

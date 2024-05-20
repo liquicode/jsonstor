@@ -178,6 +178,25 @@ module.exports = function ( Storage, DocumentCount, TestOptions )
 
 
 		//---------------------------------------------------------------------
+		it( `should read 5 documents, all at once and sorted`, async () => 
+		{
+			let documents = await Storage.FindMany2( { session_id: SessionID }, null, { order_number: 1 }, 5, TestOptions );
+			assert.ok( documents );
+			assert.ok( documents.length === 5 );
+			for ( let number = 1; number <= 5; number++ )
+			{
+				let document = documents[ number - 1 ];
+				assert.ok( document );
+				assert.ok( document._id );
+				assert.ok( document.session_id === SessionID );
+				assert.ok( document.sequence === number );
+				assert.ok( document.order_number === number );
+				assert.ok( document.update1 === 42 );
+			}
+		} );
+
+
+		//---------------------------------------------------------------------
 		it( `should update ${DocumentCount} documents, one at a time`, async () => 
 		{
 			for ( let number = 1; number <= DocumentCount; number++ )

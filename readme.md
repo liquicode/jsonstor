@@ -2,7 +2,7 @@
 
 > Home: [http://jsonstor.liquicode.com](http://jsonstor.liquicode.com)
 >
-> Version: 0.0.14
+> Version: 0.0.20
 
 ### A centralized interface to work with multiple database products and implementations.
 

@@ -395,9 +395,9 @@ module.exports = {
 								document = jsongin.Project( document, Projection );
 								documents.push( document );
 							}
-							if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { break; }
 						}
 						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
+						if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { documents = documents.splice( 0, MaxCount ); }
 						resolve( documents );
 					}
 					catch ( error )

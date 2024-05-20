@@ -17,7 +17,7 @@ module.exports = function ( Storage, TestOptions )
 		before(
 			async function ()
 			{
-				let result = await Storage.DropStorage( TestOptions );
+				var result = await Storage.DropStorage( TestOptions );
 				assert.ok( result );
 				return;
 			} );
@@ -26,7 +26,11 @@ module.exports = function ( Storage, TestOptions )
 		//---------------------------------------------------------------------
 		it( 'should not match explicit nested fields', async () => 
 		{
-			let result = null;
+			var result = null;
+
+			result = await Storage.DropStorage( TestOptions );
+			assert.ok( result );
+
 			result = await Storage.InsertOne( {
 				"session_id": "39141da7-5b24-47d5-b666-9f0a493d1084",
 				"order_number": 1,
@@ -50,6 +54,38 @@ module.exports = function ( Storage, TestOptions )
 			assert.ok( result == null );
 
 		} );
+
+
+		//---------------------------------------------------------------------
+		it( 'should sort and limit in FindMany2', async () => 
+		{
+			var result = null;
+
+			result = await Storage.DropStorage( TestOptions );
+			assert.ok( result );
+
+			var count = 10;
+			for ( var number = 1; number <= count; number++ )
+			{
+				result = await Storage.InsertOne( {
+					"sequence": number,
+					"rev_sequence": ( count - number ) + 1,
+				}, TestOptions );
+				assert.ok( result );
+			}
+
+			var max = 5;
+			var documents = await Storage.FindMany2( {}, null, { rev_sequence: 1 }, max, TestOptions );
+			assert.ok( documents );
+			assert.strictEqual( documents.length, max );
+			for ( var number = 1; number <= max; number++ )
+			{
+				var document = documents[ number - 1 ];
+				assert.strictEqual( document.rev_sequence, number );
+			}
+
+		} );
+
 
 	} );
 
