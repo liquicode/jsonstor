@@ -39,7 +39,11 @@ module.exports = {
 				return [];
 			}
 			let files = LIB_FS.readdirSync( Settings.Path );
-			files = files.filter( ( e ) => { return LIB_PATH.extname( e ).toLowerCase() === '.json'; } );
+			files = files.filter( function ( e ) { return LIB_PATH.extname( e ).toLowerCase() === '.json'; } );
+			// This listing is the collection's natural order. readdirSync returns entries in
+			// whatever order the filesystem holds them, which is not guaranteed to be any
+			// order at all, so it is sorted here rather than trusted.
+			files.sort();
 			return files;
 		}
 
@@ -65,9 +69,16 @@ module.exports = {
 			{
 				LIB_FS.mkdirSync( Settings.Path, { recursive: true } );
 			}
-			// let filename = LIB_PATH.join( Settings.Path, `${( new Date() ).getTime()}.json` );
+			// The file name carries the document's position in the natural order, so every
+			// component is padded to a fixed width. A variable width nanosecond field sorts
+			// lexicographically in a different order than it was written in - '9000000' lands
+			// after '564003000' - which made the order documents came back in depend on which
+			// nanosecond each one happened to be written in.
 			let hr_time = process.hrtime();
-			let filename = LIB_PATH.join( Settings.Path, `${( new Date() ).getTime()}.${hr_time[ 0 ]}.${hr_time[ 1 ]}.json` );
+			let milliseconds = String( ( new Date() ).getTime() ).padStart( 14, '0' );
+			let hr_seconds = String( hr_time[ 0 ] ).padStart( 10, '0' );
+			let hr_nanoseconds = String( hr_time[ 1 ] ).padStart( 9, '0' );
+			let filename = LIB_PATH.join( Settings.Path, `${milliseconds}.${hr_seconds}.${hr_nanoseconds}.json` );
 			let json = JSON.stringify( Document );
 			LIB_FS.writeFileSync( filename, json, 'utf8' );
 			return;
@@ -104,7 +115,7 @@ module.exports = {
 		Storage.DropStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -141,7 +152,7 @@ module.exports = {
 		Storage.FlushStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -166,7 +177,7 @@ module.exports = {
 		Storage.Count = async function ( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -209,7 +220,7 @@ module.exports = {
 		Storage.InsertOne = async function ( Document, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -244,7 +255,7 @@ module.exports = {
 		Storage.InsertMany = async function ( Documents, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -287,7 +298,7 @@ module.exports = {
 		Storage.FindOne = async function FindOne( Criteria, Projection, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -335,7 +346,7 @@ module.exports = {
 		Storage.FindMany = async function FindMany( Criteria, Projection, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -375,7 +386,7 @@ module.exports = {
 		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -417,7 +428,7 @@ module.exports = {
 		Storage.UpdateOne = async function UpdateOne( Criteria, Updates, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -477,7 +488,7 @@ module.exports = {
 		Storage.UpdateMany = async function UpdateMany( Criteria, Updates, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -527,7 +538,7 @@ module.exports = {
 		Storage.ReplaceOne = async function ReplaceOne( Criteria, Document, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -574,7 +585,7 @@ module.exports = {
 		Storage.DeleteOne = async function DeleteOne( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -633,7 +644,7 @@ module.exports = {
 		Storage.DeleteMany = async function DeleteMany( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{

@@ -2,93 +2,52 @@
 
 module.exports = {
 
-	Context:{
+	Context: {
 		Package: require( '../package.json' ),
-		AWS_ProfileName: 'admin',
-		AWS_BucketName: 'jsonstor.liquicode.com',
 	},
 
 	run_tests: [
 
-		// Run tests and capture the output.
+		// Run the unit tests and the jsonstor parity inventory.
+		//
+		// A gate, not a report. tests.md is written by jsonstor-docs/build/run-all-tests.js,
+		// which runs this same command through the workspace and gathers every member's
+		// result into one place. Writing it here too would give the file two authors.
 		{
 			$Shell: {
-				command: 'npx mocha -u bdd test/*.js --timeout 0 --slow 10',
-				out: { filename: 'tests.md' },
+				command: 'node build/run-tests.js',
+				out: { console: true },
 				err: { console: true },
 			}
 		},
-		{ $PrependTextFile: { filename: 'tests.md', value: '```\n' } },
-		{ $AppendTextFile: { filename: 'tests.md', value: '```\n' } },
 
 	],
 
-	build_docs: [
-
-		// // Generate: Command Reference.md
-		// {
-		// 	$ExecuteEjs: {
-		// 		ejs_file: 'docs/templates/Command Reference.md',
-		// 		use_eval: true,
-		// 		out: { filename: 'docs/guides/Command Reference.md' },
-		// 	}
-		// },
-
-		// Generate: readme.md
-		{
-			$ExecuteEjs: {
-				ejs_file: 'docs/templates/readme.md',
-				use_eval: true,
-				// debug_script: { filename: 'docs/templates/readme.md.script.js' },
-				out: { filename: 'docs/external/readme.md' },
-			}
-		},
-		{ $CopyFile: { from: 'docs/external/readme.md', to: 'readme.md' } },
-
-		// Generate: version.md
-		{
-			$ExecuteEjs: {
-				ejs_string: '<%- Context.Package.version %>',
-				use_eval: true,
-				out: { filename: 'docs/external/version.md' },
-			}
-		},
-		{ $CopyFile: { from: 'docs/external/version.md', to: 'version.md' } },
-
-		// Copy other files to the docs external area.
-		{ $EnsureFolder: { folder: 'docs/external' } },
-		{ $CopyFile: { from: 'license.md', to: 'docs/external/license.md' } },
-		{ $CopyFile: { from: 'history.md', to: 'docs/external/history.md' } },
-		{ $CopyFile: { from: 'tests.md', to: 'docs/external/tests.md' } },
-
-	],
+	// build_docs lives in jsonstor-docs now.
+	//
+	// The site, the templates, and docs-check.js moved there so that the whole family's
+	// documentation is built in one pass. readme.md and version.md in this repository are
+	// generated output of that build - edit docs/templates/readme.md in jsonstor-docs.
+	//
+	// Run 'npm run "build docs" -w jsonstor-docs.git' before publishing this package.
 
 	run_webpack: [
 
 		// Run webpack.
+		// Halts on error. This is the first step of publish_version, so a bundle which
+		// fails to build must stop the release rather than let the previous bundle ship
+		// against a new version number.
 		{
 			$Shell: {
 				command: 'npx webpack-cli --config build/webpack.config.js',
 				out: { console: true },
 				err: { console: true },
-				halt_on_error: false
 			}
 		},
 
 	],
 
-	update_aws_docs: [
-
-		// Update aws s3 bucket with package docs.
-		{
-			$Shell: {
-				command: 'set "AWS_PROFILE=${AWS_ProfileName}" & aws s3 sync docs s3://${AWS_BucketName}',
-				out: { console: true },
-				err: { console: true },
-			},
-		},
-
-	],
+	// update_aws_docs lives in jsonstor-docs now, along with the site it syncs.
 
 	npm_publish_version: [
 
@@ -155,9 +114,8 @@ module.exports = {
 	publish_version: [
 
 		// Finalize and publish the existing version.
+		{ $RunTask: { task: 'run_webpack' } },
 		{ $RunTask: { task: 'run_tests' } },
-		{ $RunTask: { task: 'build_docs' } },
-		{ $RunTask: { task: 'update_aws_docs' } },
 		{ $RunTask: { task: 'git_publish_version' } },
 		{ $RunTask: { task: 'npm_publish_version' } },
 
@@ -181,9 +139,6 @@ module.exports = {
 				out: { context: 'Package' },
 			}
 		},
-
-		// Rebuild the docs.
-		{ $RunTask: { task: 'build_docs' } },
 
 		// Update github with the new version.
 		{

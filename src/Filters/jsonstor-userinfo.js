@@ -161,7 +161,7 @@ module.exports = {
 			async function DropStorage( Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -188,7 +188,7 @@ module.exports = {
 			async function FlushStorage( Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -218,7 +218,7 @@ module.exports = {
 			async function Count( Criteria, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -254,7 +254,7 @@ module.exports = {
 			async function InsertOne( Document, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -302,7 +302,7 @@ module.exports = {
 			async function InsertMany( Documents, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -323,7 +323,7 @@ module.exports = {
 							modified = await Storage.InsertMany( modified, storage_options );
 							if ( Options.ReturnDocuments )
 							{
-								modified.forEach( document => clean_document( document ) );
+								modified.forEach( function ( document ) { clean_document( document ); } );
 								resolve( modified );
 								return;
 							}
@@ -356,7 +356,7 @@ module.exports = {
 			async function FindOne( Criteria, Projection, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -392,7 +392,7 @@ module.exports = {
 			async function FindMany( Criteria, Projection, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -402,7 +402,7 @@ module.exports = {
 							storage_options.ReturnDocuments = true;
 							let criteria = Filter.User( storage_options ).Criteria( Criteria );
 							let documents = await Storage.FindMany( criteria, Projection, storage_options );
-							documents.forEach( document => clean_document( document ) );
+							documents.forEach( function ( document ) { clean_document( document ); } );
 							resolve( documents );
 							return;
 						}
@@ -428,7 +428,7 @@ module.exports = {
 			async function UpdateOne( Criteria, Updates, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -485,7 +485,7 @@ module.exports = {
 			async function UpdateMany( Criteria, Updates, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -516,7 +516,7 @@ module.exports = {
 							}
 							if ( Options.ReturnDocuments )
 							{
-								modified.forEach( document => clean_document( document ) );
+								modified.forEach( function ( document ) { clean_document( document ); } );
 								resolve( modified );
 								return;
 							}
@@ -549,7 +549,7 @@ module.exports = {
 			async function ReplaceOne( Criteria, Document, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -605,7 +605,7 @@ module.exports = {
 			async function DeleteOne( Criteria, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -659,7 +659,7 @@ module.exports = {
 			async function DeleteMany( Criteria, Options )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -688,7 +688,7 @@ module.exports = {
 							}
 							if ( Options.ReturnDocuments )
 							{
-								modified.forEach( document => clean_document( document ) );
+								modified.forEach( function ( document ) { clean_document( document ); } );
 								resolve( modified );
 								return;
 							}
@@ -853,7 +853,7 @@ module.exports = {
 			ThisUser.SetOwner = async function ( Criteria, SetOwnerID ) 
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -897,7 +897,7 @@ module.exports = {
 			ThisUser.Share = async function ( Criteria, Readers, Writers, MakePublic )
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -974,7 +974,7 @@ module.exports = {
 			ThisUser.SetSharing = async function ( Criteria, SetReaders, SetWriters, SetPublic ) 
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{
@@ -1021,7 +1021,7 @@ module.exports = {
 			ThisUser.UnsetSharing = async function ( Criteria, UnsetReaders, UnsetWriters, UnsetPublic ) 
 			{
 				return new Promise(
-					async ( resolve, reject ) =>
+					async function ( resolve, reject )
 					{
 						try
 						{

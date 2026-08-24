@@ -1,8 +1,20 @@
-# @liquicode/devops
+# @liquicode/jsonstor
 
 > Home: [http://jsonstor.liquicode.com](http://jsonstor.liquicode.com)
 >
-> Version: 0.0.21
+> Version: 0.1.0
+
+> ### WARNING:
+>
+> This version is built on `jsongin` 0.1.0 and carries its breaking changes.
+> Please review the [Version History](/docs/external/history.md) before replacing and upgrading.
+
+
+<!-- Note: the links below are root-absolute, beginning with /docs/.
+     GitHub resolves a leading slash from the repository root, so these reach
+     docs/external/... there. The docsify site runs with an alias that rewrites
+     /docs/(.*) to /$1, so the same links route within the site. This keeps one
+     source of truth for a file published to both the repo root and docs/external. -->
 
 ### A centralized interface to work with multiple database products and implementations.
 
@@ -77,109 +89,69 @@ Database Interface
 Query, Projection, and Update Operators
 ---------------------------------------------------------------------
 
-`jsonstor` relies heavily upon the MongoDB-style mechanics implemented in the [jsongin](http://jsongin.liquicode.com) library.
+`jsonstor` relies heavily upon the MongoDB-style mechanics implemented in the
+	[jsongin](http://jsongin.liquicode.com) library.
+A criteria, a projection, and an update handed to a storage function are handed to `jsongin`,
+	so the operators a storage understands are exactly the operators `jsongin` implements.
 
-Here is a summary of supported operators:
+`jsongin` 0.1.0 implements ***219 of the 254 operators MongoDB documents***, and is measured at
+	100% parity with a live MongoDB server across 988 compared behaviors.
 
-### Query Operators
+***The list is not repeated here.*** It changes whenever the engine gains an operator, and a
+	copy of it in this file could only ever be out of date. See the
+	[Operator Reference](https://github.com/liquicode/jsongin/blob/main/docs/guides/Operator-Reference.md),
+	which is generated from the engine's own registries and checked against them in both
+	directions.
 
-|**Category** | **Operator**  | **Description**                                                                                                          |
-|------------|----------------|--------------------------------------------------------------------------------------------------------------------------|
-| Comparison | <field>: value | Implicit $eq. Specify a document field and value. A matching document will have that field strictly equal to that value. |
-| Comparison | $eq            | Matches values that are equal to a specified value.                                                                      |
-| Comparison | $ne            | Matches all values that are not equal to a specified value.                                                              |
-| Comparison | $gt            | Matches values that are greater than a specified value.                                                                  |
-| Comparison | $gte           | Matches values that are greater than or equal to a specified value.                                                      |
-| Comparison | $lt            | Matches values that are less than a specified value.                                                                     |
-| Comparison | $lte           | Matches values that are less than or equal to a specified value.                                                         |
-| Comparison | $in            | Matches any of the values specified in an array.                                                                         |
-| Comparison | $nin           | Matches none of the values specified in an array.                                                                        |
-| Logical    | $and           | Joins query clauses with a logical AND returns all documents that match the conditions of both clauses.                  |
-| Logical    | $or            | Joins query clauses with a logical OR returns all documents that match the conditions of either clause.                  |
-| Logical    | $nor           | Joins query clauses with a logical NOR returns all documents that fail to match both clauses.                            |
-| Logical    | $not           | Inverts the effect of a query expression and returns documents that do not match the query expression.                   |
-| Element    | $exists        | Matches documents that have the specified field.                                                                         |
-| Element    | $type          | Selects documents if a field is of the specified type.                                                                   |
-| Evaluation | $regex         | Selects documents where values match a specified regular expression.                                                     |
-| Array      | $elemMatch     | Selects documents if element in the array field matches all the specified $elemMatch conditions.                         |
-| Array      | $size          | Selects documents if the array field is a specified size.                                                                |
-| Array      | $all           | Matches arrays that contain all elements specified in the query.                                                         |
+Two things are worth knowing about how the operators reach an adapter:
 
-### Update Operators
+- ***An adapter which stores documents itself uses `jsongin` directly***, so it supports
+	whatever the engine supports. `jsonstor-memory`, `jsonstor-folder`, and `jsonstor-jsonfile`
+	are all in this group.
+- ***An adapter which delegates to a database passes the criteria to that database.***
+	`jsonstor-mongodb` hands criteria straight to the MongoDB driver. A SQL adapter translates
+	what it can and refuses the rest.
 
-| **Category** | **Operator** | **Description**                                                                                   |
-|--------------|--------------|---------------------------------------------------------------------------------------------------|
-| Field        | $set         | Sets the value of a field in a document.                                                          |
-| Field        | $unset       | Removes the specified field from a document.                                                      |
-| Field        | $rename      | Renames a field.                                                                                  |
-| Field        | $inc         | Increments the value of the field by the specified amount.                                        |
-| Field        | $min         | Only updates the field if the specified value is less than the existing field value.              |
-| Field        | $max         | Only updates the field if the specified value is greater than the existing field value.           |
-| Field        | $mul         | Multiplies the value of the field by the specified amount.                                        |
-| Field        | $currentDate | Sets the value of a field to current date either as a Date or a Timestamp.                        |
-| Array        | $addToSet    | *(partially implemented)* Adds elements to an array only if they do not already exist in the set. |
-| Array        | $pop         | Removes the first or last item of an array.                                                       |
-| Array        | $push        | *(partially implemented)* Adds an item to an array.                                               |
-| Array        | $pullAll     | Removes all matching values from an array.                                                        |
+`npm run parity-report` measures the difference: it runs one shared inventory against every
+	storage and against a live MongoDB, and reports where any medium disagrees.
 
 
 Storage Adapters
 ---------------------------------------------------------------------
 
-Storage adapters work with a specific storage format and are in charge reading and
-	writing data to the storage.
+A storage adapter is what actually reads and writes the documents. Every adapter implements the
+	same interface, so the choice of adapter does not reach the code which uses it.
 
-### Built-In Adapters
+***The list is not repeated here.*** It is generated from one inventory, along with a topic page
+	for each adapter describing what that adapter does differently. See
+	[Storage Adapters](/docs/guides/Storage%20Adapters.md).
 
-- `jsonstor-memory` : Documents are stored in memory and are not persisted to disk.
-- `jsonstor-folder` : Each document is stored in its own file in a single folder.
-- `jsonstor-jsonfile` : Documents are cached in memory and persisted to a single file.
-
-### External Adapters
-
-- `jsonstor-mongodb` : Documents are stored on a MongoDB server.
-  See: [https://github.com/liquicode/jsonstor-mongodb](https://github.com/liquicode/jsonstor-mongodb).
-
-- `jsonstor-excel` : Documents are stored in an Excel spreadsheet.
-  See: [https://github.com/liquicode/jsonstor-mongodb](https://github.com/liquicode/jsonstor-mongodb).
-
-### Planned Adapters:
-
-- Document Databases
-	- `jsonstor-couchdb` : Documents are stored on a CouchDB server.
-	- `jsonstor-aws-documentdb` : Documents are stored in an AWS DocumentDB.
-
-- Hybrid Databases
-	- `jsonstor-aws-dynamodb` : Documents are stored in an AWS DynamoDB.
-
-- Relational Databases
-	- `jsonstor-sqlite` : Documents are stored in a Sqlite3 file.
-	- `jsonstor-mysql` : Documents are stored on a MySql server.
-
-- Proxies
-	- `jsonstor-wss-client` : Redirects all storage functionality to a storage wss-server.
+***Each external adapter is its own package so that its driver stays optional.*** A project
+	storing documents in memory and a file downloads no database driver at all - installing
+	`@liquicode/jsonstor` brings `jsongin`, `lockfile`, and `uuid` and nothing else.
 
 
 Storage Filters
 ---------------------------------------------------------------------
 
 Storage filters work with storage adapters to add functionality to your application.
-Since filters and adapters support the same storage interface, they can be used interchangeably within your code.
+Since filters and adapters support the same storage interface, they can be used interchangeably
+	within your code.
 Filters can be added to other filters allowing you to create your own data processing pipeline.
 Again, this pipeline can be directed to store data with any storage adapter.
 
 ### Built-In Filters
 
 - `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
-- `jsonstor-userinfo` : Adds user info and access controls to documents.
+- `jsonstor-userinfo` : Adds user ownership and document sharing to an existing storage.
 
-### External Filters
-
-
-### Planned Filters
-
-- `jsonstor-timestamps` : Adds `created` and `updated` timestamps to documents.
-- `jsonstor-wss-server` : Exports a storage over the network to storage wss-client.
+See [Storage Filters](/docs/guides/Storage%20Filters.md).
 
 
+Documentation and Tests
+---------------------------------------------------------------------
 
+***The documentation and the conformance suites for the whole family are built in one place.***
+	[`@liquicode/jsonstor-docs`](https://www.npmjs.com/package/@liquicode/jsonstor-docs) carries the
+	shared storage inventory every adapter is measured by, and generates this site from it.
+	See the [Test Results](/docs/external/tests.md) for the most recent run of every adapter.

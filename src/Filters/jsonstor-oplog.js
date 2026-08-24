@@ -45,7 +45,7 @@ module.exports = {
 		async function call_function( FunctionName, ParameterNames, ParameterValues )
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{

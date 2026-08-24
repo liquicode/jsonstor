@@ -32,7 +32,7 @@ module.exports = {
 		Storage.DropStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -58,7 +58,7 @@ module.exports = {
 		Storage.FlushStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -83,7 +83,7 @@ module.exports = {
 		Storage.Count = async function ( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -125,7 +125,7 @@ module.exports = {
 		Storage.InsertOne = async function ( Document, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -161,7 +161,7 @@ module.exports = {
 		Storage.InsertMany = async function ( Documents, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -204,7 +204,7 @@ module.exports = {
 		Storage.FindOne = async function FindOne( Criteria, Projection, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -251,7 +251,7 @@ module.exports = {
 		Storage.FindMany = async function FindMany( Criteria, Projection, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -290,7 +290,7 @@ module.exports = {
 		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -331,7 +331,7 @@ module.exports = {
 		Storage.UpdateOne = async function UpdateOne( Criteria, Updates, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -392,7 +392,7 @@ module.exports = {
 		Storage.UpdateMany = async function UpdateMany( Criteria, Updates, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -442,7 +442,7 @@ module.exports = {
 		Storage.ReplaceOne = async function ReplaceOne( Criteria, Document, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -490,7 +490,7 @@ module.exports = {
 		Storage.DeleteOne = async function DeleteOne( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -551,7 +551,7 @@ module.exports = {
 		Storage.DeleteMany = async function DeleteMany( Criteria, Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{

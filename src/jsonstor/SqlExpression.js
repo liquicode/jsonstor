@@ -2,6 +2,26 @@
 
 const jsongin = require( '@liquicode/jsongin' );
 
+/*
+	Builds a SQL WHERE clause from a jsonstor criteria.
+
+	***This clause is a pre-filter and not the row filter.*** Every adapter which uses it
+	(only jsonstor-mysql today) hands each returned row to jsongin.Query with the same
+	criteria, so the statement decides how many rows travel and jsongin decides which ones
+	match. jsonstor-mysql/SQL_Query says as much: "Do the actual query filtering here."
+
+	***So the one invariant is: never render a clause which excludes a row the criteria
+	would match.*** Returning too many rows costs time. Returning too few returns a wrong
+	answer that nothing downstream can correct. When a condition cannot be rendered - an
+	operand type SQL cannot carry, a field the caller did not allow - it is left out and
+	the result broadens. That is why so much of this file drops rather than throws.
+
+	***The trap is a logical operator, where dropping a child is not the same as
+	broadening.*** Dropping an always true child of $or narrows the clause to its
+	remaining children, which loses rows. $and is the only operator for which dropping a
+	child is safe.
+*/
+
 module.exports = function ( jsonstor )
 {
 
@@ -33,11 +53,12 @@ module.exports = function ( jsonstor )
 		let expressions = [];
 		for ( let index = 0; index < Values.length; index++ )
 		{
-			let expression = SqlExpression( Values[ index ], Options );
-			if ( expression )
-			{
-				expressions.push( expression );
-			}
+			// An empty rendering is kept rather than skipped. It means the condition places
+			// ***no constraint on the statement*** - either because it is always true, or
+			// because nothing about it could be rendered - and only the operator holding it
+			// knows what that implies. Skipping it here made { $or: [ {}, { a: 1 } ] }
+			// render as ((a = 1)), which returns fewer rows than the criteria matches.
+			expressions.push( SqlExpression( Values[ index ], Options ) );
 		}
 		return expressions;
 	}
@@ -113,11 +134,15 @@ module.exports = function ( jsonstor )
 									{
 										if ( jsongin.ShortType( value ) !== 'a' ) { throw new Error( `SqlExpression: The operator [${key}] must be followed by an array.` ); }
 										let sub_expressions = get_expression_array( value, options );
-										if ( !sub_expressions ) { continue; }
+										if ( !sub_expressions ) { throw new Error( `SqlExpression: The operator [${key}] requires a non-empty array of criteria.` ); }
+										// AND TRUE is the identity, so an always true condition is dropped.
+										// If every condition was always true the whole clause constrains
+										// nothing and contributes nothing.
+										let terms = sub_expressions.filter( function ( Text ) { return Text !== ''; } );
+										if ( !terms.length ) { continue; }
 										let expr = '';
-										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
-										else { expr = sub_expressions.join( ' AND ' ); }
-										if ( !expr ) { continue; }
+										if ( terms.length === 1 ) { expr = terms[ 0 ]; }
+										else { expr = terms.join( ' AND ' ); }
 										expressions.push( `(${expr})` );
 									}
 									break;
@@ -125,11 +150,15 @@ module.exports = function ( jsonstor )
 									{
 										if ( jsongin.ShortType( value ) !== 'a' ) { throw new Error( `SqlExpression: The operator [${key}] must be followed by an array.` ); }
 										let sub_expressions = get_expression_array( value, options );
-										if ( !sub_expressions ) { continue; }
+										if ( !sub_expressions ) { throw new Error( `SqlExpression: The operator [${key}] requires a non-empty array of criteria.` ); }
+										// OR TRUE is TRUE, so one always true condition makes the whole
+										// clause unconstraining. It contributes nothing to the enclosing
+										// AND - which is not the same as dropping the condition and
+										// keeping its neighbours, which is what used to happen.
+										if ( sub_expressions.indexOf( '' ) >= 0 ) { continue; }
 										let expr = '';
-										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
+										if ( sub_expressions.length === 1 ) { expr = sub_expressions[ 0 ]; }
 										else { expr = sub_expressions.join( ' OR ' ); }
-										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
 									break;
@@ -137,17 +166,24 @@ module.exports = function ( jsonstor )
 									{
 										if ( jsongin.ShortType( value ) !== 'a' ) { throw new Error( `SqlExpression: The operator [${key}] must be followed by an array.` ); }
 										let sub_expressions = get_expression_array( value, options );
-										if ( !sub_expressions ) { continue; }
+										if ( !sub_expressions ) { throw new Error( `SqlExpression: The operator [${key}] requires a non-empty array of criteria.` ); }
+										// A child which rendered nothing is either always true or merely not
+										// renderable, and the two are indistinguishable here. FALSE would be right
+										// for the first and would wrongly narrow the result for the second, so the
+										// whole clause is dropped and the result broadens instead.
+										if ( sub_expressions.indexOf( '' ) >= 0 ) { continue; }
 										let expr = '';
-										if ( sub_expressions.length === 1 ) { expr = expressions[ 0 ]; }
+										if ( sub_expressions.length === 1 ) { expr = sub_expressions[ 0 ]; }
 										else { expr = sub_expressions.join( ' OR ' ); }
-										if ( !expr ) { continue; }
 										expressions.push( `(NOT (${expr}))` );
 									}
 									break;
 								case '$not':
 									{
 										let expr = SqlExpression( value, options );
+										// An empty operand renders nothing and the clause is left out, broadening
+										// the result. MongoDB refuses this criteria outright; jsongin is the one that
+										// gets to say so, not the statement builder.
 										if ( !expr ) { continue; }
 										expressions.push( `(NOT ${expr})` );
 									}
@@ -156,6 +192,9 @@ module.exports = function ( jsonstor )
 								case '$eqx':
 									{
 										let expr = get_operation_expression( '=', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -164,6 +203,9 @@ module.exports = function ( jsonstor )
 								case '$nex':
 									{
 										let expr = get_operation_expression( '<>', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -171,6 +213,9 @@ module.exports = function ( jsonstor )
 								case '$lt':
 									{
 										let expr = get_operation_expression( '<', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -178,6 +223,9 @@ module.exports = function ( jsonstor )
 								case '$lte':
 									{
 										let expr = get_operation_expression( '<=', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -185,6 +233,9 @@ module.exports = function ( jsonstor )
 								case '$gt':
 									{
 										let expr = get_operation_expression( '>', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -192,6 +243,9 @@ module.exports = function ( jsonstor )
 								case '$gte':
 									{
 										let expr = get_operation_expression( '>=', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -199,6 +253,9 @@ module.exports = function ( jsonstor )
 								case '$in':
 									{
 										let expr = get_operation_expression( 'IN', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -206,6 +263,9 @@ module.exports = function ( jsonstor )
 								case '$nin':
 									{
 										let expr = get_operation_expression( 'IN', value, options );
+										// The operand is a type SQL cannot carry, so this condition is left out of
+										// the statement and the caller sees a broader result. That is safe: the row
+										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(NOT (${expr}))` );
 									}
@@ -234,6 +294,8 @@ module.exports = function ( jsonstor )
 							{
 								expr = SqlExpression( value, child_options );
 							}
+							// Nothing renderable for this field, so it contributes no constraint and the
+							// result broadens. jsongin still applies the field criteria to every row.
 							if ( !expr ) { continue; }
 							expressions.push( expr );
 							// expressions.push( `(${expr})` );

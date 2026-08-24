@@ -1,15 +1,15 @@
 'use strict';
 
 const assert = require( 'assert' );
-const jsonstor = require( '../src/jsonstor' )();
+const jsonstor = require( '../../src/jsonstor' )();
 
 
-describe( '010) SqlExpression Tests', () =>
+describe( '010) SqlExpression Tests', function ()
 {
 
 
 	//---------------------------------------------------------------------
-	it( `It should return an expression for boolean values`, () => 
+	it( `It should return an expression for boolean values`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( false ), 'FALSE' );
 		assert.strictEqual( jsonstor.SqlExpression( true ), 'TRUE' );
@@ -17,7 +17,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should return an expression for number values`, () => 
+	it( `It should return an expression for number values`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( 0 ), '0' );
 		assert.strictEqual( jsonstor.SqlExpression( 3.14 ), '3.14' );
@@ -25,21 +25,21 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should return an expression for string values`, () => 
+	it( `It should return an expression for string values`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( 'Hello World!' ), '"Hello World!"' );
 	} );
 
 
 	//---------------------------------------------------------------------
-	it( `It should return an expression for null values`, () => 
+	it( `It should return an expression for null values`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( null ), 'NULL' );
 	} );
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $ImplicitEq operator`, () => 
+	it( `It should support the $ImplicitEq operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: true } ), '(active = TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: 1001 } ), '(id = 1001)' );
@@ -48,7 +48,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $eq operator`, () => 
+	it( `It should support the $eq operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $eq: true } } ), '(active = TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $eq: 1001 } } ), '(id = 1001)' );
@@ -58,7 +58,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $eqx operator`, () => 
+	it( `It should support the $eqx operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $eqx: true } } ), '(active = TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $eqx: 1001 } } ), '(id = 1001)' );
@@ -68,7 +68,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $ne operator`, () => 
+	it( `It should support the $ne operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $ne: true } } ), '(active <> TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $ne: 1001 } } ), '(id <> 1001)' );
@@ -78,7 +78,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $nex operator`, () => 
+	it( `It should support the $nex operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $nex: true } } ), '(active <> TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $nex: 1001 } } ), '(id <> 1001)' );
@@ -88,7 +88,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $lt operator`, () => 
+	it( `It should support the $lt operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $lt: true } } ), '(active < TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $lt: 1001 } } ), '(id < 1001)' );
@@ -98,7 +98,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $lte operator`, () => 
+	it( `It should support the $lte operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $lte: true } } ), '(active <= TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $lte: 1001 } } ), '(id <= 1001)' );
@@ -108,7 +108,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $gt operator`, () => 
+	it( `It should support the $gt operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $gt: true } } ), '(active > TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $gt: 1001 } } ), '(id > 1001)' );
@@ -118,7 +118,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $gte operator`, () => 
+	it( `It should support the $gte operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $gte: true } } ), '(active >= TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $gte: 1001 } } ), '(id >= 1001)' );
@@ -128,21 +128,21 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $in operator`, () => 
+	it( `It should support the $in operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { rating: { $in: [ 1, 2, 3, 4, 5 ] } } ), '(rating IN (1, 2, 3, 4, 5))' );
 	} );
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $nin operator`, () => 
+	it( `It should support the $nin operator`, function ()
 	{
 		assert.strictEqual( jsonstor.SqlExpression( { rating: { $nin: [ 1, 2, 3, 4, 5 ] } } ), '(NOT (rating IN (1, 2, 3, 4, 5)))' );
 	} );
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the implicit $and operator`, () => 
+	it( `It should support the implicit $and operator`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -156,7 +156,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $and operator`, () => 
+	it( `It should support the $and operator`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -172,7 +172,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $or operator`, () => 
+	it( `It should support the $or operator`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -188,7 +188,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $nor operator`, () => 
+	it( `It should support the $nor operator`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -204,7 +204,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support the $not operator`, () => 
+	it( `It should support the $not operator`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -217,7 +217,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should support complex logic`, () => 
+	it( `It should support complex logic`, function ()
 	{
 		let criteria = {
 			rating: {
@@ -234,7 +234,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should allow document paths`, () => 
+	it( `It should allow document paths`, function ()
 	{
 		let criteria = {
 			rating: { $ne: 2 },
@@ -246,7 +246,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should use custom identifier quotes`, () => 
+	it( `It should use custom identifier quotes`, function ()
 	{
 		let criteria = { name: 'Alice' };
 		let expr = jsonstor.SqlExpression( criteria, { IdentifierQuotes: '`' } );
@@ -255,7 +255,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should use custom string literal quotes`, () => 
+	it( `It should use custom string literal quotes`, function ()
 	{
 		let criteria = { name: 'Alice' };
 		let expr = jsonstor.SqlExpression( criteria, { StringLiteralQuotes: "'" } );
@@ -264,7 +264,7 @@ describe( '010) SqlExpression Tests', () =>
 
 
 	//---------------------------------------------------------------------
-	it( `It should respect Options.AllowedFields`, () => 
+	it( `It should respect Options.AllowedFields`, function ()
 	{
 		let criteria = {
 			rating: { $ne: 2 },
@@ -282,6 +282,138 @@ describe( '010) SqlExpression Tests', () =>
 		expr = jsonstor.SqlExpression( criteria, options );
 		assert.strictEqual( expr, '((rating <> 2) AND (user.name = 3.14))' );
 
+	} );
+
+
+
+	//---------------------------------------------------------------------
+	/*
+		A logical operator holding exactly one condition used to read the
+		accumulator of expressions built so far instead of the sub-expressions it
+		had just built. With nothing accumulated the whole clause vanished from the
+		statement; with something accumulated the condition was replaced by a
+		duplicate of whatever preceded it. Both produced a statement which ran and
+		returned the wrong rows.
+	*/
+	it( `It should render a logical operator holding one condition`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { $or: [ { a: 1 } ] } ), '((a = 1))' );
+		assert.strictEqual( jsonstor.SqlExpression( { $and: [ { a: 1 } ] } ), '((a = 1))' );
+		assert.strictEqual( jsonstor.SqlExpression( { $nor: [ { a: 1 } ] } ), '(NOT ((a = 1)))' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	it( `It should not let a one condition operator borrow a preceding expression`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $or: [ { a: 1 } ] } ), '((z = 9) AND ((a = 1)))' );
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $and: [ { a: 1 } ] } ), '((z = 9) AND ((a = 1)))' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		jsongin 0.1.0 refuses a logical operator given no conditions rather than
+		answering false. The statement builder refuses it too, rather than
+		contributing an empty string to the WHERE clause.
+	*/
+	it( `It should refuse a logical operator given no conditions`, function ()
+	{
+		assert.throws( function () { jsonstor.SqlExpression( { $or: [] } ); } );
+		assert.throws( function () { jsonstor.SqlExpression( { $and: [] } ); } );
+		assert.throws( function () { jsonstor.SqlExpression( { $nor: [] } ); } );
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		An empty sub-criteria renders as an empty string, and an empty rendering
+		means ***always true***, not ***contributes nothing***. Those are the same
+		thing for $and and different things for $or and $nor, so the rendering
+		cannot be dropped without asking which operator is holding it.
+
+		Measured against the 6.0.1 baseline, over { a: 1 }, { a: 2 }, { b: 9 }:
+
+			{ $and: [ {} ] }        matches all 3
+			{ $or:  [ {} ] }        matches all 3
+			{ $or:  [ {}, {a:1} ] } matches all 3
+			{ $nor: [ {} ] }        matches none
+			{ $nor: [ {}, {a:1} ] } matches none
+	*/
+	it( `It should treat an always true condition as true under $and`, function ()
+	{
+		// Already correct: AND TRUE is the identity, so dropping it is right.
+		assert.strictEqual( jsonstor.SqlExpression( { $and: [ {} ] } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $and: [ {}, { a: 1 } ] } ), '((z = 9) AND ((a = 1)))' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	it( `It should not drop an always true condition from $or`, function ()
+	{
+		// OR TRUE is TRUE, so the whole clause constrains nothing. Dropping the
+		// empty condition and keeping its neighbour narrowed the result instead.
+		assert.strictEqual( jsonstor.SqlExpression( { $or: [ {}, { a: 1 } ] } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $or: [ {}, { a: 1 } ] } ), '(z = 9)' );
+	} );
+
+	//---------------------------------------------------------------------
+	/*
+		A $nor whose child rendered nothing cannot be written as FALSE, even though
+		FALSE is what MongoDB means by { $nor: [ {} ] }. An empty rendering here is
+		ambiguous: the child was either always true, or simply not renderable - and
+		this file cannot tell those apart. FALSE is right for the first and wrongly
+		narrows the result for the second, so the whole clause is dropped.
+
+		This is the superset invariant at the head of SqlExpression.js: too many rows
+		is a cost, too few is a wrong answer, and jsongin is what actually filters.
+	*/
+	it( `It should broaden rather than narrow for a $nor it cannot render`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { $nor: [ {} ] } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $nor: [ {} ] } ), '(z = 9)' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		An operand which is not a boolean, number, string, null, or array cannot be
+		carried into SQL. The condition is left out and the caller sees more rows
+		than it asked for, which jsongin then filters down. Refusing the statement
+		instead would break every one of these criteria against a SQL adapter.
+	*/
+	it( `It should drop a comparison operand it cannot render`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { a: { $eq: {} } } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { a: { $gt: {} } } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { a: { $gte: new Date() } } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { a: {} } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { a: { $not: {} } } ), '' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		The reason the drop above has to reach the whole $or rather than just the one
+		condition. An unrenderable child of an $or leaves the clause unconstrained,
+		exactly as an always true child does - keeping the renderable siblings would
+		return a subset and lose rows nothing downstream could recover.
+	*/
+	it( `It should drop a whole $or when any child cannot be rendered`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { $or: [ { a: { $eq: {} } }, { b: 1 } ] } ), '' );
+		assert.strictEqual( jsonstor.SqlExpression( { z: 9, $or: [ { a: {} }, { b: 1 } ] } ), '(z = 9)' );
+	} );
+
+
+	//---------------------------------------------------------------------
+	/*
+		$and is the one operator where dropping a child is safe: AND TRUE is the
+		identity, so the remaining conditions still admit every matching row.
+	*/
+	it( `It should keep the renderable children of an $and`, function ()
+	{
+		assert.strictEqual( jsonstor.SqlExpression( { $and: [ { a: { $eq: {} } }, { b: 1 } ] } ), '((b = 1))' );
 	} );
 
 

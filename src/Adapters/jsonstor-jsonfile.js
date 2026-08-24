@@ -81,7 +81,7 @@ module.exports = {
 		Storage.DropStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
@@ -107,7 +107,7 @@ module.exports = {
 		Storage.FlushStorage = async function ( Options ) 
 		{
 			return new Promise(
-				async ( resolve, reject ) =>
+				async function ( resolve, reject )
 				{
 					try
 					{
