@@ -55,7 +55,7 @@
     ✔ It should refuse a storage which is not an object
 
 
-  38 passing (16ms)
+  38 passing (14ms)
 ```
 
 ## Parity Tests
@@ -66,11 +66,11 @@ jsonstor-memory
       ✔ should insert 100 documents, one at a time
       ✔ should delete 100 documents, all at once
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (19ms)
-      ✔ should replace 100 documents, one at a time (16ms)
+      ✔ should read 100 documents, one at a time (26ms)
+      ✔ should replace 100 documents, one at a time (21ms)
       ✔ should read 100 documents, all at once
       ✔ should read 5 documents, all at once and sorted
-      ✔ should update 100 documents, one at a time (10ms)
+      ✔ should update 100 documents, one at a time (9ms)
       ✔ should update 100 documents, all at once
       ✔ should delete 100 documents, one at a time
     B) Rainbow Tests
@@ -246,16 +246,16 @@ jsonstor-memory
 
   jsonstor-folder
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (147ms)
-      ✔ should delete 100 documents, all at once (64ms)
-      ✔ should insert 100 documents, all at once (148ms)
-      ✔ should read 100 documents, one at a time (696ms)
-      ✔ should replace 100 documents, one at a time (1680ms)
-      ✔ should read 100 documents, all at once (14ms)
-      ✔ should read 5 documents, all at once and sorted (13ms)
-      ✔ should update 100 documents, one at a time (1146ms)
-      ✔ should update 100 documents, all at once (139ms)
-      ✔ should delete 100 documents, one at a time (100ms)
+      ✔ should insert 100 documents, one at a time (149ms)
+      ✔ should delete 100 documents, all at once (63ms)
+      ✔ should insert 100 documents, all at once (141ms)
+      ✔ should read 100 documents, one at a time (724ms)
+      ✔ should replace 100 documents, one at a time (1672ms)
+      ✔ should read 100 documents, all at once (13ms)
+      ✔ should read 5 documents, all at once and sorted (14ms)
+      ✔ should update 100 documents, one at a time (1023ms)
+      ✔ should update 100 documents, all at once (106ms)
+      ✔ should delete 100 documents, one at a time (90ms)
     B) Rainbow Tests
       Nested Fields (explicit)
         ✔ should not perform matching on nested fields using implicit $eq (7ms)
@@ -294,21 +294,21 @@ jsonstor-memory
         ✔ should not perform loose comparison (<) on 'bns'
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
-        ✔ Should add documents and set permissions (46ms)
-        ✔ Alice should read all documents and write all documents (111ms)
-        ✔ Bob should read some documents and write some documents (87ms)
-        ✔ Eve should read some documents and write some documents (72ms)
-        ✔ Public objects should be readable by everyone (53ms)
-        ✔ Public objects should only be writable by the owner (60ms)
-        ✔ Should not allow readers to update documents (58ms)
+        ✔ Should add documents and set permissions (45ms)
+        ✔ Alice should read all documents and write all documents (108ms)
+        ✔ Bob should read some documents and write some documents (80ms)
+        ✔ Eve should read some documents and write some documents (58ms)
+        ✔ Public objects should be readable by everyone (48ms)
+        ✔ Public objects should only be writable by the owner (53ms)
+        ✔ Should not allow readers to update documents (56ms)
     D) Engine Contract Tests
-      ✔ should refuse a criteria naming an unknown operator (9ms)
+      ✔ should refuse a criteria naming an unknown operator (11ms)
       ✔ should refuse a criteria which is not an object
       ✔ should refuse an update naming an unknown operator
       ✔ should refuse an update which cannot be applied
-      ✔ should not alias a FindOne result to the stored document (11ms)
+      ✔ should not alias a FindOne result to the stored document (10ms)
       ✔ should not alias a FindMany result to the stored documents (11ms)
-      ✔ should sort a missing field and a null below every value (15ms)
+      ✔ should sort a missing field and a null below every value (14ms)
       ✔ should reverse that order when sorting descending
       ✔ should limit the result to MaxCount after sorting
     M) MongoDB Tutorial
@@ -327,14 +327,14 @@ jsonstor-memory
           ✔ Match Fields Using AND and OR
       Query on Embedded/Nested Documents (https://www.mongodb.com/docs/manual/tutorial/query-embedded-documents/)
         Query on Embedded/Nested Documents
-          ✔ Specify Equality Match on a Nested Field (10ms)
+          ✔ Specify Equality Match on a Nested Field (9ms)
           ✔ Specify Match using Query Operator
           ✔ Specify AND Condition
         Match an Embedded/Nested Document
           ✔ Specify Equality Match on an Embedded Document
       Query an Array (https://www.mongodb.com/docs/manual/tutorial/query-arrays/)
         Match an Array
-          ✔ Match an Array Exactly (9ms)
+          ✔ Match an Array Exactly (10ms)
           ✔ Match Array Elements
         Query an Array for an Element
           ✔ Match a Single Array Element
@@ -346,7 +346,7 @@ jsonstor-memory
           ✔ Query an Array by Array Length
       Query an Array of Embedded Documents (https://www.mongodb.com/docs/manual/tutorial/query-array-of-documents/)
         Query for a Document Nested in an Array
-          ✔ Match a Document Exactly (8ms)
+          ✔ Match a Document Exactly (14ms)
         Specify a Query Condition on a Field in an Array of Documents
           ✔ Specify a Query Condition on a Field Embedded in an Array of Documents
           ✔ Use the Array Index to Query for a Field in the Embedded Document
@@ -371,21 +371,21 @@ jsonstor-memory
             ✔ $eq match on a regular expression
             ✔ Use the $in Operator with a Regular Expression
         Comparison Operator: $gt (https://www.mongodb.com/docs/manual/reference/operator/query/gt/)
-          ✔ Match Document Fields (8ms)
+          ✔ Match Document Fields (7ms)
         Comparison Operator: $gte (https://www.mongodb.com/docs/manual/reference/operator/query/gte/)
-          ✔ Match Document Fields (9ms)
+          ✔ Match Document Fields (8ms)
         Comparison Operator: $in (https://www.mongodb.com/docs/manual/reference/operator/query/in/)
-          ✔ Use the $in Operator to Match Values (10ms)
+          ✔ Use the $in Operator to Match Values (9ms)
           ✔ Use the $in Operator to Match Values in an Array
           ✔ Use the $in Operator with a Regular Expression
         Comparison Operator: $lt (https://www.mongodb.com/docs/manual/reference/operator/query/lt/)
-          ✔ Match Document Fields (9ms)
-        Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
           ✔ Match Document Fields (8ms)
+        Comparison Operator: $lte (https://www.mongodb.com/docs/manual/reference/operator/query/lte/)
+          ✔ Match Document Fields (7ms)
         Comparison Operator: $ne (https://www.mongodb.com/docs/manual/reference/operator/query/ne/)
-          ✔ Match Document Fields (10ms)
+          ✔ Match Document Fields (7ms)
         Comparison Operator: $nin (https://www.mongodb.com/docs/manual/reference/operator/query/nin/)
-          ✔ Select on Unmatching Documents (7ms)
+          ✔ Select on Unmatching Documents (10ms)
           ✔ Select on Elements Not in an Array
       Logical Query Operators
         Logical Operator: $and (https://www.mongodb.com/docs/manual/reference/operator/query/and/)
@@ -404,41 +404,41 @@ jsonstor-memory
           ✔ Nested $or Clauses
       Element Query Operators
         Element Query Operator: $exists (https://www.mongodb.com/docs/manual/reference/operator/query/exists/)
-          ✔ Exists and Not Equal To (14ms)
-          ✔ Null Values (22ms)
+          ✔ Exists and Not Equal To (13ms)
+          ✔ Null Values (21ms)
         Element Query Operator: $type (https://www.mongodb.com/docs/manual/reference/operator/query/type/)
-          ✔ Querying by Data Type (BSON Code) (10ms)
+          ✔ Querying by Data Type (BSON Code)
           ✔ Querying by Data Type (BSON Alias)
           ✔ Querying by Data Type ("number")
           ✔ Querying by Multiple Data Type (BSON Code) (13ms)
-          ✔ Querying by Multiple Data Type (BSON Alias) (7ms)
+          ✔ Querying by Multiple Data Type (BSON Alias) (6ms)
       Array Query Operators
         Array Query Operator: $all (https://www.mongodb.com/docs/manual/reference/operator/query/all/)
-          ✔ Use $all to Match Values (9ms)
+          ✔ Use $all to Match Values (8ms)
           ✔ Use $all with $elemMatch
           ✔ Use $all with Scalar Values
         Array Query Operator: $elemMatch (https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/)
-          ✔ Element Match (11ms)
-          ✔ Array of Embedded Documents (11ms)
+          ✔ Element Match (10ms)
+          ✔ Array of Embedded Documents (6ms)
           ✔ Single Query Condition (8ms)
         Array Query Operator: $size (https://www.mongodb.com/docs/manual/reference/operator/query/size/)
-          ✔ Use $size to Match Array Sizes (18ms)
+          ✔ Use $size to Match Array Sizes (9ms)
     Z) Ad-Hoc Tests
       ✔ should not match explicit nested fields
-      ✔ should sort and limit in FindMany2 (20ms)
+      ✔ should sort and limit in FindMany2 (21ms)
 
   jsonstor-jsonfile
     A) CRUD Tests
-      ✔ should insert 100 documents, one at a time (823ms)
+      ✔ should insert 100 documents, one at a time (735ms)
       ✔ should delete 100 documents, all at once (8ms)
       ✔ should insert 100 documents, all at once
-      ✔ should read 100 documents, one at a time (9ms)
-      ✔ should replace 100 documents, one at a time (850ms)
+      ✔ should read 100 documents, one at a time (8ms)
+      ✔ should replace 100 documents, one at a time (883ms)
       ✔ should read 100 documents, all at once
       ✔ should read 5 documents, all at once and sorted
-      ✔ should update 100 documents, one at a time (879ms)
-      ✔ should update 100 documents, all at once (9ms)
-      ✔ should delete 100 documents, one at a time (656ms)
+      ✔ should update 100 documents, one at a time (881ms)
+      ✔ should update 100 documents, all at once (8ms)
+      ✔ should delete 100 documents, one at a time (579ms)
     B) Rainbow Tests
       Nested Fields (explicit)
         ✔ should not perform matching on nested fields using implicit $eq
@@ -477,13 +477,13 @@ jsonstor-memory
         ✔ should not perform loose comparison (<) on 'bns'
     C) UserInfo Permissions Tests
       Alice, Bob, and Eve scenario
-        ✔ Should add documents and set permissions (45ms)
-        ✔ Alice should read all documents and write all documents (66ms)
-        ✔ Bob should read some documents and write some documents (74ms)
-        ✔ Eve should read some documents and write some documents (60ms)
-        ✔ Public objects should be readable by everyone (60ms)
-        ✔ Public objects should only be writable by the owner (46ms)
-        ✔ Should not allow readers to update documents (63ms)
+        ✔ Should add documents and set permissions (47ms)
+        ✔ Alice should read all documents and write all documents (56ms)
+        ✔ Bob should read some documents and write some documents (55ms)
+        ✔ Eve should read some documents and write some documents (66ms)
+        ✔ Public objects should be readable by everyone (45ms)
+        ✔ Public objects should only be writable by the owner (29ms)
+        ✔ Should not allow readers to update documents (53ms)
     D) Engine Contract Tests
       ✔ should refuse a criteria naming an unknown operator
       ✔ should refuse a criteria which is not an object
@@ -608,7 +608,7 @@ jsonstor-memory
           ✔ Use $size to Match Array Sizes
     Z) Ad-Hoc Tests
       ✔ should not match explicit nested fields
-      ✔ should sort and limit in FindMany2 (65ms)
+      ✔ should sort and limit in FindMany2 (66ms)
 
 
   360 passing (9s)
