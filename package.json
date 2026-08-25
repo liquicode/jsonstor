@@ -24,12 +24,6 @@
         "history.md"
     ],
     "scripts": {
-        "test": "node build/run-tests.js",
-        "parity-test-jsonstor": "mocha -u bdd \"test/Parity Tests/jsonstor-Tests.js\" --timeout 0 --slow 10 --colors",
-        "parity-test-mongodb": "mocha -u bdd \"test/Parity Tests/MongoDB-Tests.js\" --timeout 0 --slow 10 --colors",
-        "parity-report": "node build/parity.js",
-        "coverage": "node build/coverage.js",
-        "run tests": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_tests",
         "run webpack": "npx @liquicode/devops --tasks .\\build\\build.tasks.js run_webpack",
         "publish version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js publish_version",
         "start new version": "npx @liquicode/devops --tasks .\\build\\build.tasks.js start_new_version"
@@ -50,9 +44,6 @@
     ],
     "devDependencies": {
         "@liquicode/devops": "^0.0.21",
-        "@liquicode/jsonstor-docs": "^0.1.0",
-        "mocha": "^10.3.0",
-        "mongodb": "^4.17.2",
         "webpack": "^5.90.3",
         "webpack-cli": "^5.1.4",
         "webpack-node-externals": "^3.0.0"

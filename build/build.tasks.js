@@ -6,22 +6,14 @@ module.exports = {
 		Package: require( '../package.json' ),
 	},
 
-	run_tests: [
+	// run_tests lives in jsonstor-docs now, along with the tests themselves.
+	//
+	// Every test in this family is in that one repository: the questions asked of one
+	// adapter are the questions asked of every adapter, and one copy of them is what makes
+	// two engines' results comparable. There is nothing here to run.
+	//
+	// Run 'npm test -w jsonstor-docs.git' before publishing this package.
 
-		// Run the unit tests and the jsonstor parity inventory.
-		//
-		// A gate, not a report. tests.md is written by jsonstor-docs/build/run-all-tests.js,
-		// which runs this same command through the workspace and gathers every member's
-		// result into one place. Writing it here too would give the file two authors.
-		{
-			$Shell: {
-				command: 'node build/run-tests.js',
-				out: { console: true },
-				err: { console: true },
-			}
-		},
-
-	],
 
 	// build_docs lives in jsonstor-docs now.
 	//
@@ -115,7 +107,6 @@ module.exports = {
 
 		// Finalize and publish the existing version.
 		{ $RunTask: { task: 'run_webpack' } },
-		{ $RunTask: { task: 'run_tests' } },
 		{ $RunTask: { task: 'git_publish_version' } },
 		{ $RunTask: { task: 'npm_publish_version' } },
 
