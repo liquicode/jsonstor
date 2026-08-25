@@ -29,7 +29,15 @@ module.exports = function ( jsonstor )
 	function get_operation_expression( Operator, Value, Options )
 	{
 		if ( !'bnsla'.includes( jsongin.ShortType( Value ) ) ) { return null; }
+		// Only IN takes a list. Every other operator compares against a single value, and
+		// an array operand renders as a row constructor - `field = (1, 2)` - which MySQL
+		// refuses outright with "Operand should contain 1 column(s)".
+		if ( ( jsongin.ShortType( Value ) === 'a' ) && ( Operator !== 'IN' ) ) { return null; }
 		if ( jsongin.ShortType( Options ) !== 'o' ) { throw new Error( `The Options parameter must be an object.` ); }
+		// The value is rendered first. A value SQL cannot carry renders as nothing, and the
+		// condition is dropped rather than emitted with an empty or malformed operand.
+		let value_expr = SqlExpression( Value, Options );
+		if ( !value_expr ) { return null; }
 		let expr = '';
 		if ( Options.FieldName )
 		{
@@ -39,8 +47,28 @@ module.exports = function ( jsonstor )
 		{
 			expr += Operator + ' ';
 		}
-		expr += SqlExpression( Value, Options );
+		expr += value_expr;
 		return expr;
+	}
+
+
+	//---------------------------------------------------------------------
+	function get_field_reference( Options )
+	{
+		if ( !Options.FieldName ) { return ''; }
+		return `${Options.IdentifierQuotes}${Options.FieldName}${Options.IdentifierQuotes}`;
+	}
+
+
+	//---------------------------------------------------------------------
+	function list_contains_null( Values )
+	{
+		if ( jsongin.ShortType( Values ) !== 'a' ) { return false; }
+		for ( let index = 0; index < Values.length; index++ )
+		{
+			if ( jsongin.ShortType( Values[ index ] ) === 'l' ) { return true; }
+		}
+		return false;
 	}
 
 
@@ -98,17 +126,15 @@ module.exports = function ( jsonstor )
 				break;
 			case 'a':
 				{
+					// An empty list renders as `()`, which is a syntax error rather than a constraint.
+					if ( Criteria.length === 0 ) { return ''; }
 					let expressions = [];
 					for ( let index = 0; index < Criteria.length; index++ )
 					{
-						if ( 'bnsl'.includes( jsongin.ShortType( Criteria[ index ] ) ) )
-						{
-							expressions.push( SqlExpression( Criteria[ index ] ) );
-						}
-						else
-						{
-							throw new Error( `SqlExpression: Invalid array value.` );
-						}
+						// An element SQL cannot carry cannot be listed, so the whole condition is
+						// dropped and the result broadens.
+						if ( !'bnsl'.includes( jsongin.ShortType( Criteria[ index ] ) ) ) { return ''; }
+						expressions.push( SqlExpression( Criteria[ index ] ) );
 					}
 					let expr = '(' + expressions.join( ', ' ) + ')';
 					return expr;
@@ -191,10 +217,19 @@ module.exports = function ( jsonstor )
 								case '$eq':
 								case '$eqx':
 									{
+										// SQL has no value which is equal to NULL, so `field = NULL` matches nothing
+										// while the criteria matches every row whose field is null or absent. IS NULL
+										// is the faithful rendering, and an absent field is a NULL column here.
+										if ( jsongin.ShortType( value ) === 'l' )
+										{
+											let field_ref = get_field_reference( options );
+											if ( !field_ref ) { continue; }
+											expressions.push( `(${field_ref} IS NULL)` );
+											break;
+										}
 										let expr = get_operation_expression( '=', value, options );
-										// The operand is a type SQL cannot carry, so this condition is left out of
-										// the statement and the caller sees a broader result. That is safe: the row
-										// filter is jsongin, not the WHERE clause. See the note at the top.
+										// The operand is a type SQL cannot carry, so this condition is left out of the
+										// statement and the caller sees a broader result. See the note at the top.
 										if ( !expr ) { continue; }
 										expressions.push( `(${expr})` );
 									}
@@ -202,16 +237,28 @@ module.exports = function ( jsonstor )
 								case '$ne':
 								case '$nex':
 									{
+										// The mirror of $eq. `field <> NULL` is never true, and for a real operand SQL
+										// drops every row whose field is NULL - which the criteria keeps, because an
+										// absent field is not equal to anything. Those rows are added back by name.
+										let field_ref = get_field_reference( options );
+										if ( jsongin.ShortType( value ) === 'l' )
+										{
+											if ( !field_ref ) { continue; }
+											expressions.push( `(${field_ref} IS NOT NULL)` );
+											break;
+										}
 										let expr = get_operation_expression( '<>', value, options );
-										// The operand is a type SQL cannot carry, so this condition is left out of
-										// the statement and the caller sees a broader result. That is safe: the row
-										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
-										expressions.push( `(${expr})` );
+										if ( !field_ref ) { expressions.push( `(${expr})` ); }
+										else { expressions.push( `((${expr}) OR ${field_ref} IS NULL)` ); }
 									}
 									break;
 								case '$lt':
 									{
+										// A comparison against null is not an ordering question - the criteria selects
+										// null and absent fields - and SQL answers UNKNOWN, dropping exactly the rows
+										// which should have been kept. It is left out and the result broadens.
+										if ( jsongin.ShortType( value ) === 'l' ) { continue; }
 										let expr = get_operation_expression( '<', value, options );
 										// The operand is a type SQL cannot carry, so this condition is left out of
 										// the statement and the caller sees a broader result. That is safe: the row
@@ -222,6 +269,10 @@ module.exports = function ( jsonstor )
 									break;
 								case '$lte':
 									{
+										// A comparison against null is not an ordering question - the criteria selects
+										// null and absent fields - and SQL answers UNKNOWN, dropping exactly the rows
+										// which should have been kept. It is left out and the result broadens.
+										if ( jsongin.ShortType( value ) === 'l' ) { continue; }
 										let expr = get_operation_expression( '<=', value, options );
 										// The operand is a type SQL cannot carry, so this condition is left out of
 										// the statement and the caller sees a broader result. That is safe: the row
@@ -232,6 +283,10 @@ module.exports = function ( jsonstor )
 									break;
 								case '$gt':
 									{
+										// A comparison against null is not an ordering question - the criteria selects
+										// null and absent fields - and SQL answers UNKNOWN, dropping exactly the rows
+										// which should have been kept. It is left out and the result broadens.
+										if ( jsongin.ShortType( value ) === 'l' ) { continue; }
 										let expr = get_operation_expression( '>', value, options );
 										// The operand is a type SQL cannot carry, so this condition is left out of
 										// the statement and the caller sees a broader result. That is safe: the row
@@ -242,6 +297,10 @@ module.exports = function ( jsonstor )
 									break;
 								case '$gte':
 									{
+										// A comparison against null is not an ordering question - the criteria selects
+										// null and absent fields - and SQL answers UNKNOWN, dropping exactly the rows
+										// which should have been kept. It is left out and the result broadens.
+										if ( jsongin.ShortType( value ) === 'l' ) { continue; }
 										let expr = get_operation_expression( '>=', value, options );
 										// The operand is a type SQL cannot carry, so this condition is left out of
 										// the statement and the caller sees a broader result. That is safe: the row
@@ -253,25 +312,32 @@ module.exports = function ( jsonstor )
 								case '$in':
 									{
 										let expr = get_operation_expression( 'IN', value, options );
-										// The operand is a type SQL cannot carry, so this condition is left out of
-										// the statement and the caller sees a broader result. That is safe: the row
-										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
-										expressions.push( `(${expr})` );
+										// A NULL column satisfies no IN list, so a list which names null needs those
+										// rows added back explicitly.
+										let field_ref = get_field_reference( options );
+										if ( field_ref && list_contains_null( value ) ) { expressions.push( `((${expr}) OR ${field_ref} IS NULL)` ); }
+										else { expressions.push( `(${expr})` ); }
 									}
 									break;
 								case '$nin':
 									{
 										let expr = get_operation_expression( 'IN', value, options );
-										// The operand is a type SQL cannot carry, so this condition is left out of
-										// the statement and the caller sees a broader result. That is safe: the row
-										// filter is jsongin, not the WHERE clause. See the note at the top.
 										if ( !expr ) { continue; }
-										expressions.push( `(NOT (${expr}))` );
+										// NOT IN is UNKNOWN for a NULL column, so SQL drops those rows while the
+										// criteria keeps them - an absent field is in no list.
+										let field_ref = get_field_reference( options );
+										if ( !field_ref ) { expressions.push( `(NOT (${expr}))` ); }
+										else { expressions.push( `((NOT (${expr})) OR ${field_ref} IS NULL)` ); }
 									}
 									break;
 								default:
-									throw new Error( `SqlExpression: Invalid operator [${key}] found at this level. Expected a logical operator.` );
+									// An operator this builder cannot render - $exists, $type, $size, $all,
+									// $elemMatch, and anything added later - places no constraint on the
+									// statement, so it is left out and the result broadens. jsongin still
+									// applies the whole criteria to every row, and jsongin is what refuses
+									// an operator which is genuinely invalid.
+									continue;
 							}
 						}
 						else
@@ -285,6 +351,13 @@ module.exports = function ( jsonstor )
 							child_options.FieldName = key;
 
 							let expr = '';
+							// `field = NULL` is never true in SQL, while the criteria matches every row whose
+							// field is null or absent - and an absent field is a NULL column here.
+							if ( jsongin.ShortType( value ) === 'l' )
+							{
+								expressions.push( `(${get_field_reference( child_options )} IS NULL)` );
+								continue;
+							}
 							if ( 'bnsla'.includes( jsongin.ShortType( value ) ) )
 							{
 								expr = get_operation_expression( '=', value, child_options );
@@ -321,7 +394,9 @@ module.exports = function ( jsonstor )
 			case 'f':
 			case 'y':
 			case 'u':
-			default: throw new Error( `SqlExpression: The Criteria [${JSON.stringify( Criteria )}] is invalid.` );
+			// A RegExp, a function, a symbol or an undefined has no SQL form. It constrains
+			// nothing here, and jsongin applies it to every row instead.
+			default: return '';
 		}
 
 		return null; // Unreachable code.

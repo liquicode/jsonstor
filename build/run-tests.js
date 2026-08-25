@@ -23,6 +23,19 @@ const REPO_ROOT = path.resolve( __dirname, '..' );
 const MOCHA_BIN = require.resolve( 'mocha/bin/mocha.js' );
 const MOCHA_OPTS = [ '-u', 'bdd', '--timeout', '0', '--slow', '10' ];
 
+// Anything after `npm test --` is handed to mocha untouched, so a caller can ask for a
+// different reporter without this file knowing what for. The jsonstor-docs hub asks for
+// `--reporter json` to collect per-section counts and durations across every storage.
+const EXTRA_ARGS = process.argv.slice( 2 );
+
+// A machine readable reporter is asked for in order to be parsed, so its output is passed
+// through exactly as mocha wrote it and the markdown decoration below is skipped. Each
+// suite is a separate mocha invocation, so a reader gets one document per suite.
+const MACHINE_REPORTER = EXTRA_ARGS.some( function ( Arg )
+{
+	return ( Arg === '--reporter' ) || Arg.startsWith( '--reporter=' ) || ( Arg === '-R' );
+} );
+
 const SUITES = [
 	{ label: 'Unit Tests', files: [ 'test/Unit Tests/*.js' ] },
 	{ label: 'Parity Tests', files: [ 'test/Parity Tests/jsonstor-Tests.js' ] },
@@ -32,7 +45,7 @@ const SUITES = [
 // Runs one mocha invocation and returns its captured output and counts.
 function run_suite( suite )
 {
-	const args = [ MOCHA_BIN, ...MOCHA_OPTS, ...suite.files ];
+	const args = [ MOCHA_BIN, ...MOCHA_OPTS, ...suite.files, ...EXTRA_ARGS ];
 	const result = spawnSync( process.execPath, args, {
 		cwd: REPO_ROOT,
 		encoding: 'utf8',
@@ -68,6 +81,21 @@ function parse_counts( output )
 function main()
 {
 	const results = SUITES.map( run_suite );
+
+	// A machine reporter's output is the whole point of asking for one, so nothing is
+	// written around it. The exit code still reports the run, because it is taken from
+	// mocha's own status rather than from counts scraped out of the text.
+	if ( MACHINE_REPORTER )
+	{
+		let machine_passed = true;
+		for ( const result of results )
+		{
+			if ( !result.passed ) { machine_passed = false; }
+			process.stdout.write( result.output );
+			process.stdout.write( '\n' );
+		}
+		process.exit( machine_passed ? 0 : 1 );
+	}
 
 	// Print one markdown section per suite, each in its own code fence so
 	// mocha's own per-run summary (e.g. "1161 passing") stays with its suite.

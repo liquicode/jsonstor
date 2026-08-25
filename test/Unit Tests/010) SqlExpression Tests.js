@@ -53,7 +53,10 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $eq: true } } ), '(active = TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $eq: 1001 } } ), '(id = 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $eq: 'Alice' } } ), '(name = "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $eq: null } } ), '(value = NULL)' );
+		// SQL has no value equal to NULL, so `= NULL` matches no row while the criteria
+		// matches every row whose field is null or absent. Measured against a live server:
+		// the old rendering returned nothing at all.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $eq: null } } ), '(value IS NULL)' );
 	} );
 
 
@@ -63,27 +66,36 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $eqx: true } } ), '(active = TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $eqx: 1001 } } ), '(id = 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $eqx: 'Alice' } } ), '(name = "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $eqx: null } } ), '(value = NULL)' );
+		// SQL has no value equal to NULL, so `= NULL` matches no row while the criteria
+		// matches every row whose field is null or absent. Measured against a live server:
+		// the old rendering returned nothing at all.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $eqx: null } } ), '(value IS NULL)' );
 	} );
 
 
 	//---------------------------------------------------------------------
 	it( `It should support the $ne operator`, function ()
 	{
-		assert.strictEqual( jsonstor.SqlExpression( { active: { $ne: true } } ), '(active <> TRUE)' );
-		assert.strictEqual( jsonstor.SqlExpression( { id: { $ne: 1001 } } ), '(id <> 1001)' );
-		assert.strictEqual( jsonstor.SqlExpression( { name: { $ne: 'Alice' } } ), '(name <> "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $ne: null } } ), '(value <> NULL)' );
+		// A criteria $ne matches a field which is absent, and SQL drops a NULL row from
+		// `field <> value` because the comparison is UNKNOWN rather than true. Those rows
+		// are named explicitly so the clause cannot return fewer rows than the criteria.
+		assert.strictEqual( jsonstor.SqlExpression( { active: { $ne: true } } ), '((active <> TRUE) OR active IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { id: { $ne: 1001 } } ), '((id <> 1001) OR id IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { name: { $ne: 'Alice' } } ), '((name <> "Alice") OR name IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $ne: null } } ), '(value IS NOT NULL)' );
 	} );
 
 
 	//---------------------------------------------------------------------
 	it( `It should support the $nex operator`, function ()
 	{
-		assert.strictEqual( jsonstor.SqlExpression( { active: { $nex: true } } ), '(active <> TRUE)' );
-		assert.strictEqual( jsonstor.SqlExpression( { id: { $nex: 1001 } } ), '(id <> 1001)' );
-		assert.strictEqual( jsonstor.SqlExpression( { name: { $nex: 'Alice' } } ), '(name <> "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $nex: null } } ), '(value <> NULL)' );
+		// A criteria $ne matches a field which is absent, and SQL drops a NULL row from
+		// `field <> value` because the comparison is UNKNOWN rather than true. Those rows
+		// are named explicitly so the clause cannot return fewer rows than the criteria.
+		assert.strictEqual( jsonstor.SqlExpression( { active: { $nex: true } } ), '((active <> TRUE) OR active IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { id: { $nex: 1001 } } ), '((id <> 1001) OR id IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { name: { $nex: 'Alice' } } ), '((name <> "Alice") OR name IS NULL)' );
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $nex: null } } ), '(value IS NOT NULL)' );
 	} );
 
 
@@ -93,7 +105,10 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $lt: true } } ), '(active < TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $lt: 1001 } } ), '(id < 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $lt: 'Alice' } } ), '(name < "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $lt: null } } ), '(value < NULL)' );
+		// A comparison against null selects null and absent fields rather than asking an
+		// ordering question, and SQL answers UNKNOWN for all of them. The condition is
+		// left out entirely and jsongin filters the rows instead.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $lt: null } } ), '' );
 	} );
 
 
@@ -103,7 +118,10 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $lte: true } } ), '(active <= TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $lte: 1001 } } ), '(id <= 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $lte: 'Alice' } } ), '(name <= "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $lte: null } } ), '(value <= NULL)' );
+		// A comparison against null selects null and absent fields rather than asking an
+		// ordering question, and SQL answers UNKNOWN for all of them. The condition is
+		// left out entirely and jsongin filters the rows instead.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $lte: null } } ), '' );
 	} );
 
 
@@ -113,7 +131,10 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $gt: true } } ), '(active > TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $gt: 1001 } } ), '(id > 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $gt: 'Alice' } } ), '(name > "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $gt: null } } ), '(value > NULL)' );
+		// A comparison against null selects null and absent fields rather than asking an
+		// ordering question, and SQL answers UNKNOWN for all of them. The condition is
+		// left out entirely and jsongin filters the rows instead.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $gt: null } } ), '' );
 	} );
 
 
@@ -123,7 +144,10 @@ describe( '010) SqlExpression Tests', function ()
 		assert.strictEqual( jsonstor.SqlExpression( { active: { $gte: true } } ), '(active >= TRUE)' );
 		assert.strictEqual( jsonstor.SqlExpression( { id: { $gte: 1001 } } ), '(id >= 1001)' );
 		assert.strictEqual( jsonstor.SqlExpression( { name: { $gte: 'Alice' } } ), '(name >= "Alice")' );
-		assert.strictEqual( jsonstor.SqlExpression( { value: { $gte: null } } ), '(value >= NULL)' );
+		// A comparison against null selects null and absent fields rather than asking an
+		// ordering question, and SQL answers UNKNOWN for all of them. The condition is
+		// left out entirely and jsongin filters the rows instead.
+		assert.strictEqual( jsonstor.SqlExpression( { value: { $gte: null } } ), '' );
 	} );
 
 
@@ -137,7 +161,9 @@ describe( '010) SqlExpression Tests', function ()
 	//---------------------------------------------------------------------
 	it( `It should support the $nin operator`, function ()
 	{
-		assert.strictEqual( jsonstor.SqlExpression( { rating: { $nin: [ 1, 2, 3, 4, 5 ] } } ), '(NOT (rating IN (1, 2, 3, 4, 5)))' );
+		// NOT IN is UNKNOWN for a NULL column, so those rows are named explicitly - an
+		// absent field is in no list, and the criteria matches it.
+		assert.strictEqual( jsonstor.SqlExpression( { rating: { $nin: [ 1, 2, 3, 4, 5 ] } } ), '((NOT (rating IN (1, 2, 3, 4, 5))) OR rating IS NULL)' );
 	} );
 
 
@@ -229,7 +255,7 @@ describe( '010) SqlExpression Tests', function ()
 			},
 		};
 		let expr = jsonstor.SqlExpression( criteria );
-		assert.strictEqual( expr, '((rating <> 2) AND ((rating >= 1) OR (rating <= 5)))' );
+		assert.strictEqual( expr, '(((rating <> 2) OR rating IS NULL) AND ((rating >= 1) OR (rating <= 5)))' );
 	} );
 
 
@@ -241,7 +267,7 @@ describe( '010) SqlExpression Tests', function ()
 			'user.name': 3.14,
 		};
 		let expr = jsonstor.SqlExpression( criteria );
-		assert.strictEqual( expr, '((rating <> 2) AND (user.name = 3.14))' );
+		assert.strictEqual( expr, '(((rating <> 2) OR rating IS NULL) AND (user.name = 3.14))' );
 	} );
 
 
@@ -276,11 +302,11 @@ describe( '010) SqlExpression Tests', function ()
 			}
 		};
 		let expr = jsonstor.SqlExpression( criteria, options );
-		assert.strictEqual( expr, '(rating <> 2)' );
+		assert.strictEqual( expr, '((rating <> 2) OR rating IS NULL)' );
 
 		options.AllowedFields[ 'user.name' ] = { short_type: 'n' };
 		expr = jsonstor.SqlExpression( criteria, options );
-		assert.strictEqual( expr, '((rating <> 2) AND (user.name = 3.14))' );
+		assert.strictEqual( expr, '(((rating <> 2) OR rating IS NULL) AND (user.name = 3.14))' );
 
 	} );
 
