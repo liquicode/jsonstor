@@ -14,17 +14,17 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 010) SqlExpression Tests          |      46 |       0 |      4ms |
 | 011) SqlExpression Coverage Tests |       7 |       0 |      2ms |
 | 020) OpLog Filter Tests           |       4 |       0 |      2ms |
-| SqlExpression Parity              |      45 |       0 |     52ms |
-| **total**                         | **102** |   **0** | **60ms** |
+| SqlExpression Parity              |      45 |       0 |     63ms |
+| **total**                         | **102** |   **0** | **71ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |          D |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (40ms) |  27/0 (1ms) |   7/0 (7ms) |  9/0 (1ms) |  26/0 (3ms) |   39/0 (4ms) |  2/0 (0ms) |  **120/0** (56ms) |
-| jsonstor-jsonfile | 10/0 (2.96s) |  27/0 (1ms) | 7/0 (432ms) |  9/0 (6ms) |  26/0 (0ms) |  39/0 (15ms) | 2/0 (50ms) | **120/0** (3.46s) |
-| jsonstor-folder   | 10/0 (3.56s) | 27/0 (24ms) | 7/0 (399ms) | 9/0 (42ms) | 26/0 (57ms) | 39/0 (197ms) | 2/0 (37ms) | **120/0** (4.31s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |    **78/0** |    **117/0** |    **6/0** | **360/0** (7.83s) |
+| jsonstor-memory   |  10/0 (42ms) |  27/0 (4ms) |   7/0 (9ms) |  9/0 (1ms) |  26/0 (3ms) |   39/0 (6ms) |  2/0 (0ms) |  **120/0** (65ms) |
+| jsonstor-jsonfile | 10/0 (2.83s) |  27/0 (2ms) | 7/0 (455ms) |  9/0 (5ms) |  26/0 (1ms) |  39/0 (13ms) | 2/0 (50ms) | **120/0** (3.35s) |
+| jsonstor-folder   | 10/0 (3.66s) | 27/0 (23ms) | 7/0 (461ms) | 9/0 (47ms) | 26/0 (62ms) | 39/0 (200ms) | 2/0 (20ms) | **120/0** (4.48s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |    **78/0** |    **117/0** |    **6/0** | **360/0** (7.89s) |
 
 Each cell is ***passing/failing (duration)***.
 
