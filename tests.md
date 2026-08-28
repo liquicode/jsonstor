@@ -11,20 +11,20 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 | Suite                             | Passing | Failing | Duration |
 |-----------------------------------|--------:|--------:|---------:|
-| 010) SqlExpression Tests          |      46 |       0 |      4ms |
+| 010) SqlExpression Tests          |      46 |       0 |      6ms |
 | 011) SqlExpression Coverage Tests |       7 |       0 |      2ms |
-| 020) OpLog Filter Tests           |       4 |       0 |      2ms |
-| SqlExpression Parity              |      45 |       0 |     63ms |
-| **total**                         | **102** |   **0** | **71ms** |
+| 020) OpLog Filter Tests           |       4 |       0 |      1ms |
+| SqlExpression Parity              |      45 |       0 |     59ms |
+| **total**                         | **102** |   **0** | **68ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |          D |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (42ms) |  27/0 (4ms) |   7/0 (9ms) |  9/0 (1ms) |  26/0 (3ms) |   39/0 (6ms) |  2/0 (0ms) |  **120/0** (65ms) |
-| jsonstor-jsonfile | 10/0 (2.83s) |  27/0 (2ms) | 7/0 (455ms) |  9/0 (5ms) |  26/0 (1ms) |  39/0 (13ms) | 2/0 (50ms) | **120/0** (3.35s) |
-| jsonstor-folder   | 10/0 (3.66s) | 27/0 (23ms) | 7/0 (461ms) | 9/0 (47ms) | 26/0 (62ms) | 39/0 (200ms) | 2/0 (20ms) | **120/0** (4.48s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |    **78/0** |    **117/0** |    **6/0** | **360/0** (7.89s) |
+| jsonstor-memory   |  10/0 (44ms) |  27/0 (3ms) |  7/0 (21ms) |  9/0 (1ms) |  26/0 (4ms) |   39/0 (6ms) |  2/0 (0ms) |  **120/0** (79ms) |
+| jsonstor-jsonfile | 10/0 (3.06s) |  27/0 (0ms) | 7/0 (469ms) | 9/0 (11ms) |  26/0 (1ms) |  39/0 (16ms) | 2/0 (66ms) | **120/0** (3.62s) |
+| jsonstor-folder   | 10/0 (4.21s) | 27/0 (19ms) | 7/0 (670ms) | 9/0 (46ms) | 26/0 (60ms) | 39/0 (233ms) | 2/0 (21ms) | **120/0** (5.26s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |    **78/0** |    **117/0** |    **6/0** | **360/0** (8.96s) |
 
 Each cell is ***passing/failing (duration)***.
 

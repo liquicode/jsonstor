@@ -105,9 +105,9 @@ module.exports = function ( jsonstor )
 	// The Expression is expected to arrive parenthesized.
 	function negate( Expression, Options )
 	{
-		if ( Options.Dialect === 'mysql' ) { return `(${Expression} IS NOT TRUE)`; }
-		// The portable spelling. It says the same thing at the cost of naming the expression
-		// twice, and every engine has it.
+		if ( Options.NegateWithIsNotTrue ) { return `(${Expression} IS NOT TRUE)`; }
+		// The portable spelling, and the default. It says the same thing at the cost of naming
+		// the expression twice, and every engine has it.
 		return `((NOT ${Expression}) OR ${Expression} IS NULL)`;
 	}
 
@@ -273,7 +273,7 @@ module.exports = function ( jsonstor )
 	// an alternation - none has a LIKE form, and guessing at one would miss rows the regex
 	// matches. A leading ^ and a trailing $ are read as anchors and decide which ends of the
 	// pattern get a wildcard.
-	function get_like_pattern( Value, RegExpOptions )
+	function get_like_pattern( Value, RegExpOptions, Options )
 	{
 		let source = '';
 		let flags = '';
@@ -301,10 +301,20 @@ module.exports = function ( jsonstor )
 		// text. A backslash is in the list, so the literal below cannot contain one.
 		if ( /[\\^$.*+?()[\]{}|]/.test( source ) ) { return null; }
 
-		// % and _ are LIKE's own wildcards, and MySQL's default LIKE escape is the backslash.
-		// A literal one of either has to be escaped on the way into the pattern.
-		let literal = source.split( '%' ).join( '\\%' );
-		literal = literal.split( '_' ).join( '\\_' );
+		// % and _ are LIKE's own wildcards, so a literal one of either has to be escaped on the
+		// way into the pattern.
+		//
+		// ***Which character does that is the dialect's to say, and some dialects have none.***
+		// MySQL escapes with a backslash by default. SQLite has no default at all, so there an
+		// unescaped pattern reads \% as a literal backslash followed by the wildcard and drops
+		// the very row the criteria matches - which is the one direction this file may never
+		// go. An empty LikeEscapeCharacter says the dialect cannot ask this question, and the
+		// pattern is refused so that jsongin answers it instead.
+		let escape_character = Options.LikeEscapeCharacter;
+		let needs_escape = ( source.includes( '%' ) || source.includes( '_' ) );
+		if ( needs_escape && !escape_character ) { return null; }
+		let literal = source.split( '%' ).join( escape_character + '%' );
+		literal = literal.split( '_' ).join( escape_character + '_' );
 
 		let pattern = literal;
 		if ( !anchored_start ) { pattern = '%' + pattern; }
@@ -390,10 +400,38 @@ module.exports = function ( jsonstor )
 		if ( typeof options.IdentifierQuotes === 'undefined' ) { options.IdentifierQuotes = ''; }
 		if ( typeof options.AllowedFields === 'undefined' ) { options.AllowedFields = null; }
 		if ( typeof options.FieldName === 'undefined' ) { options.FieldName = ''; }
-		// Which SQL to write. 'mysql' is the only adapter using this file today and the only
-		// dialect its renderings are measured against; 'core' restricts them to predicates
-		// every engine has, for an adapter which is not MySQL.
-		if ( typeof options.Dialect === 'undefined' ) { options.Dialect = 'mysql'; }
+
+		//---------------------------------------------------------------------
+		// ***Where the engines disagree, and what each adapter is asked to declare.***
+		//
+		// These were a single `Options.Dialect === 'mysql'` branch until a second SQL adapter
+		// arrived and turned it into a fork. An adapter now declares what its own platform
+		// does differently and says nothing about the rest.
+		//
+		// ***Every default below is the answer which is safe on every engine.*** That is the
+		// rule which makes the next adapter cheap: an option added later for some future
+		// dialect can only cost an existing adapter a rendering it never had, and can never
+		// narrow a clause behind its back - which is the one direction the pre-filter
+		// invariant forbids. ***Declaring nothing is always correct, and merely slow.***
+		//
+		// See jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
+
+		// How a string literal escapes its own quote. 'double' doubles the quote and leaves a
+		// backslash alone, which is standard SQL and what SQLite and Postgres read. MySQL
+		// reads a backslash as an escape character and needs 'backslash'.
+		if ( typeof options.StringLiteralEscape === 'undefined' ) { options.StringLiteralEscape = 'double'; }
+		// The character which escapes a literal % or _ inside a LIKE pattern. Empty means the
+		// dialect offers none, and a pattern needing one is refused rather than rendered wrong.
+		if ( typeof options.LikeEscapeCharacter === 'undefined' ) { options.LikeEscapeCharacter = ''; }
+		// Whether a rendered LIKE names its escape character with an ESCAPE clause.
+		if ( typeof options.LikeEscapeClause === 'undefined' ) { options.LikeEscapeClause = false; }
+		// Whether the engine has IS NOT TRUE. See negate().
+		if ( typeof options.NegateWithIsNotTrue === 'undefined' ) { options.NegateWithIsNotTrue = false; }
+		// Whether $mod renders. Neither MOD() nor TRUNCATE() is universal, and the truncation
+		// is load bearing rather than cosmetic - see the $mod case.
+		if ( typeof options.RendersModulo === 'undefined' ) { options.RendersModulo = false; }
+		// Whether the four $bits* operators render.
+		if ( typeof options.RendersBitwise === 'undefined' ) { options.RendersBitwise = false; }
 
 
 		switch ( jsongin.ShortType( Criteria ) )
@@ -413,17 +451,28 @@ module.exports = function ( jsonstor )
 				break;
 			case 's':
 				{
-					// ***The escape character goes first.*** Escaping the quotes first would
-					// double the backslashes that escaping introduced.
+					// ***This is the one place a caller's text reaches the statement
+					// unparameterized***, so how a dialect escapes its own quote is not a detail.
 					//
-					// Both use split/join because String.replace with a string pattern replaces
-					// only the ***first*** occurrence. A value holding two quotes closed its
-					// literal early and MySQL answered ER_PARSE_ERROR; a value holding a
+					// Both spellings use split/join because String.replace with a string pattern
+					// replaces only the ***first*** occurrence. A value holding two quotes closed
+					// its literal early and MySQL answered ER_PARSE_ERROR; a value holding a
 					// backslash was worse, because "a\b" is an 'a' and a backspace to MySQL and
-					// the statement ran and matched the wrong rows. It was also the one place a
-					// caller's text reached the statement unparameterized.
-					let text = Criteria.split( '\\' ).join( '\\\\' );
-					text = text.split( options.StringLiteralQuotes ).join( '\\' + options.StringLiteralQuotes );
+					// the statement ran and matched the wrong rows.
+					let text = Criteria;
+					if ( options.StringLiteralEscape === 'backslash' )
+					{
+						// ***The escape character goes first.*** Escaping the quotes first would
+						// double the backslashes that escaping introduced.
+						text = text.split( '\\' ).join( '\\\\' );
+						text = text.split( options.StringLiteralQuotes ).join( '\\' + options.StringLiteralQuotes );
+					}
+					else
+					{
+						// Standard SQL, and what SQLite and Postgres read. A backslash is an
+						// ordinary character here, and doubling it would store two.
+						text = text.split( options.StringLiteralQuotes ).join( options.StringLiteralQuotes + options.StringLiteralQuotes );
+					}
 					return `${options.StringLiteralQuotes}${text}${options.StringLiteralQuotes}`;
 				}
 				break;
@@ -681,7 +730,7 @@ module.exports = function ( jsonstor )
 									break;
 								case '$mod':
 									{
-										if ( options.Dialect !== 'mysql' ) { continue; }
+										if ( !options.RendersModulo ) { continue; }
 										if ( jsongin.ShortType( value ) !== 'a' ) { continue; }
 										if ( value.length !== 2 ) { continue; }
 										let divisor = value[ 0 ];
@@ -703,7 +752,7 @@ module.exports = function ( jsonstor )
 								case '$bitsAnySet':
 								case '$bitsAnyClear':
 									{
-										if ( options.Dialect !== 'mysql' ) { continue; }
+										if ( !options.RendersBitwise ) { continue; }
 										let field_ref = get_field_reference( options );
 										if ( !field_ref ) { continue; }
 										let mask = get_bit_mask( value );
@@ -724,11 +773,20 @@ module.exports = function ( jsonstor )
 									{
 										let field_ref = get_field_reference( options );
 										if ( !field_ref ) { continue; }
-										let pattern = get_like_pattern( value, Criteria.$options );
-										// Not plain text, or a flag which would narrow. Left out, and jsongin
-										// applies the expression to every row instead.
+										let pattern = get_like_pattern( value, Criteria.$options, options );
+										// Not plain text, a flag which would narrow, or a wildcard this dialect
+										// cannot escape. Left out, and jsongin applies the expression to every
+										// row instead.
 										if ( pattern === null ) { continue; }
-										expressions.push( `(${field_ref} LIKE ${SqlExpression( pattern, options )})` );
+										let like = `${field_ref} LIKE ${SqlExpression( pattern, options )}`;
+										// ***Naming the escape character is what makes the escaping above mean
+										// anything*** on an engine which has no default one. MySQL has one and
+										// does not want the clause.
+										if ( options.LikeEscapeClause )
+										{
+											like += ` ESCAPE ${SqlExpression( options.LikeEscapeCharacter, options )}`;
+										}
+										expressions.push( `(${like})` );
 									}
 									break;
 								case '$options':
