@@ -22,6 +22,10 @@ module.exports = function ( AdapterName, Settings, Filters )
 		//---------------------------------------------------------------------
 		Adapters: {},
 		Filters: {},
+		// ***A criteria translator is the third kind of plugin.*** It turns a jsongin
+		// criteria into whatever its target backend can be asked, and reports what it
+		// could not absorb. See jsonx/.plans/criteria-translation-layer.md.
+		Translators: {},
 
 
 		//---------------------------------------------------------------------
@@ -44,6 +48,14 @@ module.exports = function ( AdapterName, Settings, Filters )
 						throw new Error( `Storage filter [${Plugin.FilterName}] already exists.` );
 					}
 					jsonstor.Filters[ Plugin.FilterName ] = Plugin;
+				}
+				else if ( Plugin.TranslatorName )
+				{
+					if ( typeof jsonstor.Translators[ Plugin.TranslatorName ] !== 'undefined' )
+					{
+						throw new Error( `Criteria translator [${Plugin.TranslatorName}] already exists.` );
+					}
+					jsonstor.Translators[ Plugin.TranslatorName ] = Plugin;
 				}
 				else { return null; }
 			}
@@ -143,7 +155,25 @@ module.exports = function ( AdapterName, Settings, Filters )
 
 
 	//---------------------------------------------------------------------
-	jsonstor.SqlExpression = require( './jsonstor/SqlExpression' )( jsonstor );
+	// Load Translators
+	jsonstor.LoadPlugin( require( './jsonstor/SqlExpression' )( jsonstor ) );
+	// ***Mango is not MongoDB's alone.*** CouchDB and PouchDB speak a narrower dialect of it
+	// and narrow this translator with an option rather than writing another one, which is why
+	// it ships here beside SqlExpression instead of inside jsonstor-mongodb.
+	jsonstor.LoadPlugin( require( './jsonstor/MangoExpression' )( jsonstor ) );
+	// ***Named for convenience; the registry is the authority.*** An adapter reaches its
+	// translator by name either way, and a third party translator has only the registry.
+	jsonstor.SqlExpression = jsonstor.Translators[ 'SqlExpression' ];
+	jsonstor.MangoExpression = jsonstor.Translators[ 'MangoExpression' ];
+
+	// ***What every registered translator does with every jsongin query operator.***
+	// Built from jsongin's operator list and whatever is registered above, so neither the
+	// rows nor the columns are written down twice.
+	jsonstor.OperatorMatrix = require( './jsonstor/OperatorMatrix' )( jsonstor );
+
+	// ***The target-agnostic half of a translator, for whoever writes the next one.***
+	// The criteria-shape and allowlist questions, with no target in them. See the module.
+	jsonstor.TranslatorSupport = require( './jsonstor/TranslatorSupport' )();
 
 
 	//---------------------------------------------------------------------

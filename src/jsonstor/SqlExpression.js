@@ -1,6 +1,7 @@
 'use strict';
 
 const jsongin = require( '@liquicode/jsongin' );
+const SUPPORT = require( './TranslatorSupport' )();
 
 /*
 	Builds a SQL WHERE clause from a jsonstor criteria.
@@ -50,7 +51,7 @@ module.exports = function ( jsonstor )
 		if ( jsongin.ShortType( Options ) !== 'o' ) { throw new Error( `The Options parameter must be an object.` ); }
 		// The value is rendered first. A value SQL cannot carry renders as nothing, and the
 		// condition is dropped rather than emitted with an empty or malformed operand.
-		let value_expr = SqlExpression( Value, Options );
+		let value_expr = render( Value, Options );
 		if ( !value_expr ) { return null; }
 		let expr = '';
 		if ( Options.FieldName )
@@ -75,22 +76,16 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
-	// Whether an object describes a field, or is a value the field is compared against.
+	// ***The target-agnostic half, which lives in jsonstor rather than here.***
 	//
-	// { $gte: 1, $lte: 5 } describes the field and is rendered. { a: 1 } is an object the
-	// field must equal, and SQL has no form for that. An empty object is a value too: it
-	// matches only a field which holds an empty object.
-	function is_operator_object( Value )
-	{
-		if ( jsongin.ShortType( Value ) !== 'o' ) { return false; }
-		let keys = Object.keys( Value );
-		if ( !keys.length ) { return false; }
-		for ( let index = 0; index < keys.length; index++ )
-		{
-			if ( !keys[ index ].startsWith( '$' ) ) { return false; }
-		}
-		return true;
-	}
+	// These ask about the shape of a criteria and about the field allowlist, and mention no
+	// SQL at all - so they are the same questions a Mango or a DynamoDB translator has to
+	// ask. They kept their local names here, so every call site below reads as it did.
+	const is_operator_object = SUPPORT.IsOperatorObject;
+	const field_is_projection = SUPPORT.FieldIsProjection;
+	const criteria_names_projection = SUPPORT.CriteriaNamesProjection;
+	const operand_type_agrees = SUPPORT.OperandTypeAgrees;
+	const split_null_values = SUPPORT.SplitNullValues;
 
 
 	//---------------------------------------------------------------------
@@ -130,102 +125,6 @@ module.exports = function ( jsonstor )
 		if ( !Expression ) { return Expression; }
 		if ( !field_is_projection( Options.FieldName, Options ) ) { return Expression; }
 		return `(${Expression} OR ${get_field_reference( Options )} IS NULL)`;
-	}
-
-
-	//---------------------------------------------------------------------
-	function field_is_projection( FieldName, Options )
-	{
-		if ( !Options.AllowedFields ) { return false; }
-		if ( !FieldName ) { return false; }
-		let field = Options.AllowedFields[ FieldName ];
-		if ( !field ) { return false; }
-		return ( field.is_projection === true );
-	}
-
-
-	//---------------------------------------------------------------------
-	// Whether a criteria names any projected column, at any depth.
-	//
-	// ***Broadening has to happen outside the negation, and a logical operator turns it
-	// inside out.*** A field level condition is broadened where it is pushed, which is already
-	// outside its own $not - but $nor and a top level $not negate an expression built further
-	// down, where the disjunct has been added: `NOT (col = x OR col IS NULL)` is
-	// `col <> x AND col IS NOT NULL`, which drops the very rows F4 exists to keep. There is no
-	// wrapping which repairs that, so the whole operator is dropped instead and the result
-	// broadens.
-	function criteria_names_projection( Criteria, Options )
-	{
-		let st = jsongin.ShortType( Criteria );
-		if ( st === 'a' )
-		{
-			for ( let index = 0; index < Criteria.length; index++ )
-			{
-				if ( criteria_names_projection( Criteria[ index ], Options ) ) { return true; }
-			}
-			return false;
-		}
-		if ( st !== 'o' ) { return false; }
-		for ( let key in Criteria )
-		{
-			if ( !key.startsWith( '$' ) )
-			{
-				if ( field_is_projection( key, Options ) ) { return true; }
-			}
-			if ( criteria_names_projection( Criteria[ key ], Options ) ) { return true; }
-		}
-		return false;
-	}
-
-
-	//---------------------------------------------------------------------
-	// Whether an operand is the same kind of value as the column it is compared against.
-	//
-	// ***jsongin compares by type where SQL coerces.*** A boolean is never equal to a string
-	// to jsongin, so { b: { $ne: '0' } } matches every row - while MySQL reads "0" as 0, finds
-	// it equal to a false column, and drops exactly those rows.
-	//
-	// ***Only the negating comparisons need this.*** Under a type mismatch $eq and $in match
-	// nothing in jsongin, so a coercing clause only admits extra rows; and jsongin refuses a
-	// cross type ordering outright, which makes $lt and its siblings match nothing either.
-	// $ne, $nex and $nin are the ones which match everything, and so have rows to lose.
-	//
-	// A column whose type the caller did not declare is not second guessed: with no
-	// AllowedFields entry there is nothing to compare the operand against.
-	function operand_type_agrees( Value, Options )
-	{
-		if ( !Options.AllowedFields ) { return true; }
-		if ( !Options.FieldName ) { return true; }
-		let field = Options.AllowedFields[ Options.FieldName ];
-		if ( !field ) { return true; }
-		if ( !field.short_type ) { return true; }
-		let values = ( jsongin.ShortType( Value ) === 'a' ) ? Value : [ Value ];
-		for ( let index = 0; index < values.length; index++ )
-		{
-			// A null is not a type mismatch. It is asked about with IS NULL instead.
-			if ( jsongin.ShortType( values[ index ] ) === 'l' ) { continue; }
-			if ( jsongin.ShortType( values[ index ] ) !== field.short_type ) { return false; }
-		}
-		return true;
-	}
-
-
-	//---------------------------------------------------------------------
-	// Splits an operand list into its non-null values and whether it named a null.
-	//
-	// A NULL in an IN list poisons the whole comparison: `2 IN (10, NULL)` is UNKNOWN rather
-	// than false, so NOT of it is UNKNOWN too and the row is dropped even though 2 is plainly
-	// not in the list. The nulls come out of the list and are asked about with IS NULL instead.
-	function split_null_values( Values )
-	{
-		let result = { Values: [], HasNull: false };
-		if ( jsongin.ShortType( Values ) !== 'a' ) { return result; }
-		for ( let index = 0; index < Values.length; index++ )
-		{
-			if ( jsongin.ShortType( Values[ index ] ) === 'l' ) { result.HasNull = true; continue; }
-			result.Values.push( Values[ index ] );
-		}
-		return result;
 	}
 
 
@@ -386,35 +285,44 @@ module.exports = function ( jsonstor )
 			// because nothing about it could be rendered - and only the operator holding it
 			// knows what that implies. Skipping it here made { $or: [ {}, { a: 1 } ] }
 			// render as ((a = 1)), which returns fewer rows than the criteria matches.
-			expressions.push( SqlExpression( Values[ index ], Options ) );
+			expressions.push( render( Values[ index ], Options ) );
 		}
 		return expressions;
 	}
 
 
 	//---------------------------------------------------------------------
-	function SqlExpression( Criteria, Options = {} )
+	// Fills in every option the renderer reads. ***Called once, at the entry point.***
+	//
+	// ***This used to run at every node of the criteria tree.*** The renderer cloned and
+	// re-defaulted its options on each recursive call, which was wasteful and - the reason
+	// it had to go - a hard blocker on a function valued option. jsongin.Clone is
+	// JSON.parse( JSON.stringify() ), which ***silently drops a function***, so a renderer
+	// an adapter injected would have been deleted on the way in with no error at all.
+	// Defaulting once, with a shallow copy, is what lets an adapter supply a rendering
+	// rather than only a scalar. Nothing below here mutates an option except FieldName,
+	// which is set on a per field copy - see the object case.
+	//
+	// ***Where the engines disagree, and what each adapter is asked to declare.***
+	//
+	// These were a single `Options.Dialect === 'mysql'` branch until a second SQL adapter
+	// arrived and turned it into a fork. An adapter now declares what its own platform
+	// does differently and says nothing about the rest.
+	//
+	// ***Every default below is the answer which is safe on every engine.*** That is the
+	// rule which makes the next adapter cheap: an option added later for some future
+	// dialect can only cost an existing adapter a rendering it never had, and can never
+	// narrow a clause behind its back - which is the one direction the pre-filter
+	// invariant forbids. ***Declaring nothing is always correct, and merely slow.***
+	//
+	// See jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
+	function apply_defaults( Options )
 	{
-		let options = jsongin.Clone( Options );
+		let options = Object.assign( {}, Options );
 		if ( typeof options.StringLiteralQuotes === 'undefined' ) { options.StringLiteralQuotes = '"'; }
 		if ( typeof options.IdentifierQuotes === 'undefined' ) { options.IdentifierQuotes = ''; }
 		if ( typeof options.AllowedFields === 'undefined' ) { options.AllowedFields = null; }
 		if ( typeof options.FieldName === 'undefined' ) { options.FieldName = ''; }
-
-		//---------------------------------------------------------------------
-		// ***Where the engines disagree, and what each adapter is asked to declare.***
-		//
-		// These were a single `Options.Dialect === 'mysql'` branch until a second SQL adapter
-		// arrived and turned it into a fork. An adapter now declares what its own platform
-		// does differently and says nothing about the rest.
-		//
-		// ***Every default below is the answer which is safe on every engine.*** That is the
-		// rule which makes the next adapter cheap: an option added later for some future
-		// dialect can only cost an existing adapter a rendering it never had, and can never
-		// narrow a clause behind its back - which is the one direction the pre-filter
-		// invariant forbids. ***Declaring nothing is always correct, and merely slow.***
-		//
-		// See jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
 
 		// How a string literal escapes its own quote. 'double' doubles the quote and leaves a
 		// backslash alone, which is standard SQL and what SQLite and Postgres read. MySQL
@@ -432,6 +340,54 @@ module.exports = function ( jsonstor )
 		if ( typeof options.RendersModulo === 'undefined' ) { options.RendersModulo = false; }
 		// Whether the four $bits* operators render.
 		if ( typeof options.RendersBitwise === 'undefined' ) { options.RendersBitwise = false; }
+		return options;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The public entry point, and the only one.*** The recursive renderer below is
+	// internal: it returns a bare string and assumes its options are already defaulted.
+	//
+	// ***Object in, object out, so every later addition is additive.*** A named field can
+	// join either side without touching a caller, which is what lets the sort, projection
+	// and limit half of the seam be shaped now and implemented later.
+	//
+	// Returns:
+	//
+	//   Pushdown   The WHERE clause, as a string. ***Opaque to jsonstor*** - only the
+	//              adapter which chose this translator gives it meaning. Empty means the
+	//              criteria could not be narrowed at all and every row must travel.
+	//   Residual   The part of the criteria the pushdown does not decide ***exactly***,
+	//              which the adapter must still put to jsongin.Query. See below.
+	//   *Absorbed  Whether the translator took responsibility for that part of the query.
+	//              All false here: only the criteria is implemented.
+	function Translate( Request )
+	{
+		if ( jsongin.ShortType( Request ) !== 'o' ) { throw new Error( `The Request parameter must be an object.` ); }
+		let options = apply_defaults( Request.Options );
+		return {
+			Pushdown: render( Request.Criteria, options ),
+			// ***The residual is the whole criteria, and that is the honest answer today.***
+			// The clause is a pre-filter and jsongin.Query is the row filter. Until a
+			// rendering can report that it decided a condition ***exactly*** - which is not
+			// the same as having rendered it, because a projected column is broadened on
+			// purpose - the honest answer is that it decided none of them. Returning less
+			// than this would narrow an answer, which is the one direction the invariant
+			// forbids. Reducing it is an optimization, and it has to be earned per operator.
+			Residual: Request.Criteria,
+			// The seam is shaped for the whole query; only the criteria is implemented. An
+			// adapter reads these to learn it must still sort, project and limit itself.
+			SortAbsorbed: false,
+			ProjectionAbsorbed: false,
+			LimitAbsorbed: false,
+		};
+	}
+
+
+	//---------------------------------------------------------------------
+	// The recursive renderer. Internal - see Translate.
+	function render( Criteria, options )
+	{
 
 
 		switch ( jsongin.ShortType( Criteria ) )
@@ -489,7 +445,7 @@ module.exports = function ( jsonstor )
 						// An element SQL cannot carry cannot be listed, so the whole condition is
 						// dropped and the result broadens.
 						if ( !'bnsl'.includes( jsongin.ShortType( Criteria[ index ] ) ) ) { return ''; }
-						expressions.push( SqlExpression( Criteria[ index ], options ) );
+						expressions.push( render( Criteria[ index ], options ) );
 					}
 					let expr = '(' + expressions.join( ', ' ) + ')';
 					return expr;
@@ -568,7 +524,7 @@ module.exports = function ( jsonstor )
 										// A field level $not is negated inside the broadening applied where the
 										// field is pushed, so only the top level form has to be dropped.
 										if ( !options.FieldName && criteria_names_projection( value, options ) ) { continue; }
-										let expr = SqlExpression( value, options );
+										let expr = render( value, options );
 										// An empty operand renders nothing and the clause is left out, broadening
 										// the result. MongoDB refuses this criteria outright; jsongin is the one that
 										// gets to say so, not the statement builder.
@@ -778,13 +734,13 @@ module.exports = function ( jsonstor )
 										// cannot escape. Left out, and jsongin applies the expression to every
 										// row instead.
 										if ( pattern === null ) { continue; }
-										let like = `${field_ref} LIKE ${SqlExpression( pattern, options )}`;
+										let like = `${field_ref} LIKE ${render( pattern, options )}`;
 										// ***Naming the escape character is what makes the escaping above mean
 										// anything*** on an engine which has no default one. MySQL has one and
 										// does not want the clause.
 										if ( options.LikeEscapeClause )
 										{
-											like += ` ESCAPE ${SqlExpression( options.LikeEscapeCharacter, options )}`;
+											like += ` ESCAPE ${render( options.LikeEscapeCharacter, options )}`;
 										}
 										expressions.push( `(${like})` );
 									}
@@ -827,10 +783,10 @@ module.exports = function ( jsonstor )
 						else
 						{
 							// Key is a field.
-							let child_options = jsongin.Clone( options );
-							if ( Options && Options.AllowedFields )
+							let child_options = Object.assign( {}, options );
+							if ( options && options.AllowedFields )
 							{
-								if ( typeof Options.AllowedFields[ key ] === 'undefined' ) { continue; }
+								if ( typeof options.AllowedFields[ key ] === 'undefined' ) { continue; }
 							}
 							child_options.FieldName = key;
 
@@ -865,7 +821,7 @@ module.exports = function ( jsonstor )
 								// really were { a: 1 } was then dropped whenever its own `a` column was not 1,
 								// which is a lost row rather than a broadened result.
 								if ( !is_operator_object( value ) ) { continue; }
-								expr = SqlExpression( value, child_options );
+								expr = render( value, child_options );
 							}
 							// Nothing renderable for this field, so it contributes no constraint and the
 							// result broadens. jsongin still applies the field criteria to every row.
@@ -904,7 +860,54 @@ module.exports = function ( jsonstor )
 	}
 
 
-
-
-	return SqlExpression;
+	// ***A translator is a plugin, the way an adapter and a filter already are.***
+	// jsonstor.LoadPlugin files this under jsonstor.Translators by TranslatorName.
+	return {
+		TranslatorName: 'SqlExpression',
+		Translate: Translate,
+		// ***What this translator does with each jsongin query operator.*** Only what it
+		// renders is named; anything undeclared is `dropped`, which is the safe default.
+		//
+		// ***Nothing here is `exact`, and that is a measurement result rather than an
+		// oversight.*** Exactness is a claim about what a running engine does with a
+		// rendering, and no rendering below has been measured for it. Two reasons it is
+		// rarely reachable here anyway: a projected column is broadened under F4, and a
+		// dialect coerces where jsongin compares by type. Raising a cell is the per
+		// operator optimization a live-server suite has to license first.
+		//
+		// $elemMatch, $size, $all and $type are deferred, and $comment, $sampleRate and
+		// $noop constrain nothing - all seven are left undeclared.
+		Fidelities: {
+			// Comparison
+			'$eq': 'broadening',
+			'$ne': 'broadening',
+			'$gt': 'broadening',
+			'$gte': 'broadening',
+			'$lt': 'broadening',
+			'$lte': 'broadening',
+			'$in': 'broadening',
+			'$nin': 'broadening',
+			// Logical
+			'$and': 'broadening',
+			'$or': 'broadening',
+			'$nor': 'broadening',
+			'$not': 'broadening',
+			// Evaluation
+			'$regex': 'broadening',
+			'$expr': 'broadening',
+			'$mod': 'broadening',
+			// Bitwise
+			'$bitsAllSet': 'broadening',
+			'$bitsAllClear': 'broadening',
+			'$bitsAnySet': 'broadening',
+			'$bitsAnyClear': 'broadening',
+			// Element
+			'$exists': 'broadening',
+			// Extension
+			'$ImplicitEq': 'broadening',
+			'$eqx': 'broadening',
+			'$nex': 'broadening',
+			'$exprx': 'broadening',
+		},
+	};
 };
