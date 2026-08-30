@@ -37,12 +37,14 @@ module.exports =
 		// actually run - is unaffected. Bundling a shim instead would imply those two
 		// adapters work in a browser, and they do not.
 		//
-		// `lockfile` is a declared dependency which nothing under src/ requires; it is listed
-		// here so that reinstating a use of it fails the build rather than the browser.
+		// `crypto` is the exception, and it is empty here on purpose. NewUniqueID asks
+		// `globalThis.crypto.getRandomValues` first, which every browser answers, and reaches
+		// for Node's module only when that is missing. So the empty module is the browser
+		// taking the path it should take rather than a capability being withheld.
 		fallback: {
 			fs: false,
 			path: false,
-			lockfile: false,
+			crypto: false,
 		},
 	},
 };

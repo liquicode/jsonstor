@@ -1,7 +1,7 @@
 "use strict";
 
 
-const LIB_UUID = require( 'uuid' );
+const NewUniqueID = require( '../jsonstor/NewUniqueID' );
 
 const jsongin = require( '@liquicode/jsongin' );
 // const jsonstor = require( '../jsonstor' )();
@@ -119,7 +119,7 @@ module.exports = {
 			if ( jsongin.ShortType( User ) !== 'o' ) { throw PARAMETER_ERROR( 'User', 'object' ); }
 			if ( jsongin.ShortType( User.user_id ) !== 's' ) { throw PARAMETER_ERROR( 'User.user_id', 'string' ); }
 			let user_info = {
-				id: LIB_UUID.v4(),
+				id: NewUniqueID(),
 				created_at: zulu_timestamp(),
 				updated_at: zulu_timestamp(),
 				owner_id: User.user_id,

@@ -6,7 +6,7 @@
 // ***supported and never required***.
 //
 // ***There are no named exports, and that is a decision rather than an omission.***
-// *(User decision, 2026-08-30.)* This module exports a ***function***, and its 13-member
+// *(User decision, 2026-08-30.)* This module exports a ***function***, and its 14-member
 // surface exists only on the object that function returns - `Adapters`, `Filters` and
 // `Translators` are built fresh on every call, so they belong to an instance and not to the
 // module. An ESM wrapper which called the function at load time to obtain something to
@@ -184,6 +184,13 @@ declare module '@liquicode/jsonstor'
 		SqlExpression: CriteriaTranslatorPlugin;
 		/** The built-in Mango criteria translator. Also reachable as `Translators.MangoExpression`. */
 		MangoExpression: CriteriaTranslatorPlugin;
+
+		/**
+		 * A new unique identifier.
+		 * `ShortID` (the default) is `Size` characters from a 36 character alphabet, always beginning with a letter.
+		 * `UUIDv4` is RFC 4122 version 4, has a fixed length, and refuses a `Size`.
+		 */
+		NewUniqueID( Format?: 'ShortID' | 'UUIDv4', Prefix?: string, Size?: number | null ): string;
 
 		OperatorMatrix: OperatorMatrixApi;
 		TranslatorSupport: TranslatorSupportApi;

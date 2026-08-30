@@ -171,6 +171,11 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// rows nor the columns are written down twice.
 	jsonstor.OperatorMatrix = require( './jsonstor/OperatorMatrix' )( jsonstor );
 
+	// ***A unique identifier, without a dependency.*** The adapters cannot reach this
+	// instance - requiring it from one would be circular - so they require the module
+	// directly and this is the same function under a public name.
+	jsonstor.NewUniqueID = require( './jsonstor/NewUniqueID' );
+
 	// ***The target-agnostic half of a translator, for whoever writes the next one.***
 	// The criteria-shape and allowlist questions, with no target in them. See the module.
 	jsonstor.TranslatorSupport = require( './jsonstor/TranslatorSupport' )();

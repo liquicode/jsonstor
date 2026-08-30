@@ -1,6 +1,6 @@
 'use strict';
 
-const LIB_UUID = require( 'uuid' );
+const NewUniqueID = require( '../jsonstor/NewUniqueID' );
 
 const jsongin = require( '@liquicode/jsongin' );
 // const jsonstor = require( '../jsonstor' )();
@@ -132,7 +132,7 @@ module.exports = {
 						if ( jsongin.ShortType( Options ) !== 'o' ) { Options = {}; }
 						if ( jsongin.ShortType( Document ) !== 'o' ) { throw new Error( `Document must be an object.` ); }
 						let document = jsongin.Clone( Document );
-						if ( typeof document._id === 'undefined' ) { document._id = LIB_UUID.v4(); }
+						if ( typeof document._id === 'undefined' ) { document._id = NewUniqueID(); }
 						Storage.store.push( document );
 						Storage.is_dirty = true;
 						if ( Options.ReturnDocuments )
@@ -172,7 +172,7 @@ module.exports = {
 						for ( let index = 0; index < Documents.length; index++ )
 						{
 							let document = jsongin.Clone( Documents[ index ] );
-							if ( typeof document._id === 'undefined' ) { document._id = LIB_UUID.v4(); }
+							if ( typeof document._id === 'undefined' ) { document._id = NewUniqueID(); }
 							Storage.store.push( document );
 							modified_count++;
 							if ( Options.ReturnDocuments ) { modified.push( document ); }

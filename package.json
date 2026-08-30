@@ -61,8 +61,6 @@
         "webpack-node-externals": "^3.0.0"
     },
     "dependencies": {
-        "@liquicode/jsongin": "^0.1.0",
-        "lockfile": "^1.0.4",
-        "uuid": "^9.0.1"
+        "@liquicode/jsongin": "^0.1.0"
     }
 }
