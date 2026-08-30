@@ -16,9 +16,21 @@
         }
     ],
     "main": "src/jsonstor.js",
+    "types": "./types/jsonstor.d.ts",
+    "exports": {
+        ".": {
+            "types": "./types/jsonstor.d.ts",
+            "browser": "./dist/jsonstor.min.js",
+            "require": "./src/jsonstor.js",
+            "default": "./src/jsonstor.js"
+        },
+        "./dist/*": "./dist/*",
+        "./package.json": "./package.json"
+    },
     "files": [
         "src",
         "dist",
+        "types",
         "license.md",
         "readme.md",
         "history.md"
