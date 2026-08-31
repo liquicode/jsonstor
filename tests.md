@@ -9,26 +9,26 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 ## Unit Tests
 
-| Suite                                               | Passing | Failing |  Duration |
-|-----------------------------------------------------|--------:|--------:|----------:|
-| 010) SqlExpression Tests                            |      46 |       0 |       6ms |
-| 011) SqlExpression Coverage Tests                   |       9 |       0 |       3ms |
-| 012) MangoExpression Tests Registration             |       3 |       0 |       1ms |
-| 012) MangoExpression Tests Absorption               |       8 |       0 |       1ms |
-| 012) MangoExpression Tests Pruning                  |       9 |       0 |       1ms |
-| 012) MangoExpression Tests Narrowing the vocabulary |       4 |       0 |       1ms |
-| 012) MangoExpression Tests The invariant            |       3 |       0 |     102ms |
-| 020) OpLog Filter Tests                             |       4 |       0 |       4ms |
-| **total**                                           |  **86** |   **0** | **119ms** |
+| Suite                                               | Passing | Failing | Duration |
+|-----------------------------------------------------|--------:|--------:|---------:|
+| 010) SqlExpression Tests                            |      46 |       0 |      4ms |
+| 011) SqlExpression Coverage Tests                   |       9 |       0 |      3ms |
+| 012) MangoExpression Tests Registration             |       3 |       0 |      0ms |
+| 012) MangoExpression Tests Absorption               |       8 |       0 |      2ms |
+| 012) MangoExpression Tests Pruning                  |       9 |       0 |      1ms |
+| 012) MangoExpression Tests Narrowing the vocabulary |       4 |       0 |      0ms |
+| 012) MangoExpression Tests The invariant            |       3 |       0 |     76ms |
+| 020) OpLog Filter Tests                             |       4 |       0 |      3ms |
+| **total**                                           |  **86** |   **0** | **89ms** |
 
 ## Engine Tests
 
-| Engine            |            A |           B |           C |          D |          E |            M |            N |           Z |              Total |
-|-------------------|-------------:|------------:|------------:|-----------:|-----------:|-------------:|-------------:|------------:|-------------------:|
-| jsonstor-memory   |  10/0 (35ms) |  27/0 (4ms) |   7/0 (6ms) |  9/0 (3ms) |  6/0 (2ms) |   26/0 (4ms) |   39/0 (6ms) |   2/0 (0ms) |   **126/0** (60ms) |
-| jsonstor-jsonfile | 10/0 (3.98s) |  27/0 (0ms) | 7/0 (688ms) |  9/0 (6ms) |  6/0 (4ms) |   26/0 (0ms) |  39/0 (20ms) |  2/0 (77ms) |  **126/0** (4.78s) |
-| jsonstor-folder   | 10/0 (4.98s) | 27/0 (42ms) | 7/0 (1.09s) | 9/0 (43ms) | 6/0 (88ms) | 26/0 (131ms) | 39/0 (529ms) | 2/0 (100ms) |  **126/0** (7.00s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |     **78/0** |    **117/0** |     **6/0** | **378/0** (11.84s) |
+| Engine            |            A |           B |           C |          D |          E |          F |           M |            N |          Z |             Total |
+|-------------------|-------------:|------------:|------------:|-----------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
+| jsonstor-memory   |  10/0 (31ms) |  27/0 (3ms) |   7/0 (8ms) |  9/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) |  26/0 (3ms) |   39/0 (6ms) |  2/0 (0ms) |  **129/0** (54ms) |
+| jsonstor-jsonfile | 10/0 (2.75s) |  27/0 (0ms) | 7/0 (422ms) |  9/0 (6ms) |  6/0 (9ms) |  3/0 (0ms) |  26/0 (1ms) |  39/0 (12ms) | 2/0 (60ms) | **129/0** (3.26s) |
+| jsonstor-folder   | 10/0 (3.52s) | 27/0 (22ms) | 7/0 (392ms) | 9/0 (45ms) | 6/0 (33ms) | 3/0 (15ms) | 26/0 (51ms) | 39/0 (205ms) | 2/0 (20ms) | **129/0** (4.30s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (7.61s) |
 
 Each cell is ***passing/failing (duration)***.
 
@@ -39,6 +39,7 @@ Each cell is ***passing/failing (duration)***.
 | C      | UserInfo Permissions Tests |
 | D      | Engine Contract Tests      |
 | E      | Extension Operator Tests   |
+| F      | Pushdown Tests             |
 | M      | MongoDB Tutorial           |
 | N      | MongoDB Reference          |
 | Z      | Ad-Hoc Tests               |

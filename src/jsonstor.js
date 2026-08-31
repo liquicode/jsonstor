@@ -5,6 +5,10 @@ const LIB_PATH = require( 'path' );
 
 const jsongin = require( '@liquicode/jsongin' );
 
+// ***Per-call measurement of the two stage model.*** It depends on nothing in jsonstor, so it
+// is built once here rather than per instance. See src/jsonstor/Statistics.js.
+const STATISTICS = require( './jsonstor/Statistics' )();
+
 module.exports = function ( AdapterName, Settings, Filters )
 {
 	let _package = require( '../package.json' );
@@ -112,6 +116,10 @@ module.exports = function ( AdapterName, Settings, Filters )
 					storage.FilterName = item.FilterName;
 				}
 			}
+			// ***Last, so that it is outermost.*** Options.Statistics is stripped here and a
+			// private collector forwarded in its place, which is what keeps every filter and
+			// the adapter beneath returning the value they always returned.
+			STATISTICS.Wrap( storage, AdapterName );
 			return storage;
 		},
 
@@ -125,7 +133,36 @@ module.exports = function ( AdapterName, Settings, Filters )
 			if ( typeof jsonstor.Filters[ FilterName ] === 'undefined' ) { throw new Error( `Storage filter [${FilterName}] is not loaded.` ); }
 			let storage = jsonstor.Filters[ FilterName ].GetFilter( jsonstor, Storage, Settings );
 			storage.FilterName = FilterName;
+			// ***This is a second entry point and it needs the same wrapper.*** A storage built
+			// here never passed through GetStorage, so without this a filtered storage would
+			// accept Options.Statistics and silently answer without any.
+			STATISTICS.Wrap( storage, ( Storage && Storage.AdapterName ) || '' );
 			return storage;
+		},
+
+
+		//---------------------------------------------------------------------
+		// What an adapter calls to report one criteria evaluation. A no-op unless this call
+		// was made with Options.Statistics, so it is called unconditionally.
+		ReportStatistics: function ( Options, Statistics )
+		{
+			return STATISTICS.Report( Options, Statistics );
+		},
+
+
+		//---------------------------------------------------------------------
+		// What has already been reported for this call, or null. For an adapter which learns
+		// the pushdown and its row count in two different places.
+		ReadStatistics: function ( Options )
+		{
+			return STATISTICS.Read( Options );
+		},
+
+
+		//---------------------------------------------------------------------
+		IsMeasuringStatistics: function ( Options )
+		{
+			return STATISTICS.IsMeasuring( Options );
 		},
 
 

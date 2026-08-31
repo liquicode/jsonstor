@@ -49,6 +49,18 @@ module.exports = function ( jsonstor )
 		// refuses outright with "Operand should contain 1 column(s)".
 		if ( ( jsongin.ShortType( Value ) === 'a' ) && ( Operator !== 'IN' ) ) { return null; }
 		if ( jsongin.ShortType( Options ) !== 'o' ) { throw new Error( `The Options parameter must be an object.` ); }
+		// ***An engine which throws on a type mismatch is asked nothing it would throw about.***
+		// Every field-against-operand comparison in this file arrives here, so this is the one
+		// place the check has to be. It drops the condition the same way an unrenderable operand
+		// does, which broadens - the safe direction, and the only one available: a statement
+		// which errors returns no rows to filter afterwards.
+		//
+		// Off by default, so MySQL and SQLite render exactly what they rendered before. See
+		// apply_defaults for why their coercion makes the looser reading correct for them.
+		if ( Options.RefusesTypeMismatch )
+		{
+			if ( !operand_type_agrees( Value, Options ) ) { return null; }
+		}
 		// The value is rendered first. A value SQL cannot carry renders as nothing, and the
 		// condition is dropped rather than emitted with an empty or malformed operand.
 		let value_expr = render( Value, Options );
@@ -340,6 +352,19 @@ module.exports = function ( jsonstor )
 		if ( typeof options.RendersModulo === 'undefined' ) { options.RendersModulo = false; }
 		// Whether the four $bits* operators render.
 		if ( typeof options.RendersBitwise === 'undefined' ) { options.RendersBitwise = false; }
+		// ***Whether this engine refuses a comparison whose operand is not the column's type.***
+		// Coercion is dialect behavior rather than SQL behavior, and the three engines here do
+		// three different things with `size = 'not-a-number'` against an integer column: MySQL
+		// coerces, SQLite applies affinity, and ***Postgres throws***. The first two only admit
+		// or exclude rows, which is why operand_type_agrees guards the negating comparisons
+		// alone - those are the ones with rows to lose. A thrown statement is a different
+		// failure: it returns no answer at all rather than a broad one.
+		//
+		// So an engine which refuses says so, and every comparison it renders is checked rather
+		// than only the negating ones. The default is the tolerant reading, which is what MySQL
+		// and SQLite have always done and leaves both unchanged. See
+		// jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
+		if ( typeof options.RefusesTypeMismatch === 'undefined' ) { options.RefusesTypeMismatch = false; }
 		return options;
 	}
 

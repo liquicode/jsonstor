@@ -28,6 +28,31 @@ module.exports = {
 
 		//=====================================================================
 		let Storage = jsonstor.StorageInterface();
+
+		//=====================================================================
+		// What the two stages did, for a storage which has no first stage.
+		//
+		// ***This adapter pushes nothing down, and that is the measurement.*** There is no
+		// server to ask and no clause to build, so every document is handed to jsongin and the
+		// criteria is the residual entire. Reporting it makes that comparable with an adapter
+		// which does push down: PushdownRows reads the same way everywhere - how many rows the
+		// second stage had to look at.
+		//
+		// Scanned is the size of the collection rather than the number of documents actually
+		// examined, because a read which stops early stopped by luck rather than by a clause.
+		// A no-op unless the caller asked for statistics.
+		function report_scan( Options, Criteria, Scanned, Matched )
+		{
+			jsonstor.ReportStatistics( Options, {
+				Translator: '',
+				Pushdown: null,
+				PushdownRows: Scanned,
+				Residual: ( jsongin.ShortType( Criteria ) === 'o' ) ? Criteria : {},
+				ResidualRows: Matched,
+			} );
+			return;
+		}
+
 		Storage.Settings = Settings;
 
 
@@ -201,6 +226,7 @@ module.exports = {
 								}
 							}
 						}
+						report_scan( Options, Criteria, json_files.length, count );
 						resolve( count );
 					}
 					catch ( error )
@@ -327,6 +353,7 @@ module.exports = {
 								}
 							}
 						}
+						report_scan( Options, Criteria, json_files.length, document ? 1 : 0 );
 						resolve( document );
 					}
 					catch ( error )
@@ -367,6 +394,7 @@ module.exports = {
 								documents.push( document );
 							}
 						}
+						report_scan( Options, Criteria, json_files.length, documents.length );
 						resolve( documents );
 					}
 					catch ( error )
@@ -409,6 +437,7 @@ module.exports = {
 						}
 						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
 						if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { documents = documents.splice( 0, MaxCount ); }
+						report_scan( Options, Criteria, json_files.length, documents.length );
 						resolve( documents );
 					}
 					catch ( error )

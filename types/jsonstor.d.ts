@@ -52,11 +52,47 @@ declare module '@liquicode/jsonstor'
 	// An adapter is free to add members of its own, so this is left open. `jsonstor-memory`
 	// carries `store` and `is_dirty`; they are not part of the interface and not declared.
 
+	// What a call reports when it is made with `Options.Statistics`.
+	//
+	// ***Every storage call is two filters***: a Pushdown the medium is asked directly, and
+	// a Residual which jsongin decides over the rows that came back. This is that split,
+	// measured for one call.
+
+	export interface CallStatistics
+	{
+		/** The adapter which answered. */
+		Adapter: string;
+		/** Whether anything reported. A call which evaluates no criteria reports nothing, and its counts stay at zero because none was taken. */
+		Measured: boolean;
+		/** The criteria translator used, or an empty string when the adapter pushes nothing down. */
+		Translator: string;
+		/** What was sent to the medium: a WHERE clause, a Mango criteria, or null when nothing was pushed down. */
+		Pushdown: string | JsonDocument | null;
+		/** How many rows came back from the pushdown - how many the second stage had to look at. */
+		PushdownRows: number;
+		/** The part of the criteria jsongin still had to decide. */
+		Residual: QueryCriteria | null;
+		/** How many rows the call returned. */
+		ResidualRows: number;
+	}
+
+
+	// A call made with `Options.Statistics` answers this instead of its usual value.
+	// `Result` is exactly what the call would have returned without the option.
+
+	export interface MeasuredResult
+	{
+		Result: any;
+		Statistics: CallStatistics;
+	}
+
+
 	export interface Storage
 	{
 		DropStorage( Options?: JsonDocument ): Promise<any>;
 		FlushStorage( Options?: JsonDocument ): Promise<any>;
-		Count( Criteria?: QueryCriteria, Options?: JsonDocument ): Promise<number>;
+		/** A number, or a MeasuredResult when called with `Options.Statistics`. */
+		Count( Criteria?: QueryCriteria, Options?: JsonDocument ): Promise<number | MeasuredResult>;
 		InsertOne( Document: JsonDocument, Options?: JsonDocument ): Promise<any>;
 		InsertMany( Documents: JsonDocument[], Options?: JsonDocument ): Promise<any>;
 		FindOne( Criteria?: QueryCriteria, Projection?: JsonDocument, Options?: JsonDocument ): Promise<any>;
@@ -191,6 +227,13 @@ declare module '@liquicode/jsonstor'
 		 * `UUIDv4` is RFC 4122 version 4, has a fixed length, and refuses a `Size`.
 		 */
 		NewUniqueID( Format?: 'ShortID' | 'UUIDv4', Prefix?: string, Size?: number | null ): string;
+
+		/** What an adapter calls to report one criteria evaluation. A no-op unless the call was made with `Options.Statistics`. */
+		ReportStatistics( Options: JsonDocument, Statistics: Partial<CallStatistics> ): boolean;
+		/** What has already been reported for this call, or null. For an adapter which learns the pushdown and its row count in two places. */
+		ReadStatistics( Options: JsonDocument ): CallStatistics | null;
+		/** Whether this call is being measured, for an adapter which would have to do real work to answer. */
+		IsMeasuringStatistics( Options: JsonDocument ): boolean;
 
 		OperatorMatrix: OperatorMatrixApi;
 		TranslatorSupport: TranslatorSupportApi;
