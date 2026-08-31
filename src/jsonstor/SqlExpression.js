@@ -113,8 +113,22 @@ module.exports = function ( jsonstor )
 	function negate( Expression, Options )
 	{
 		if ( Options.NegateWithIsNotTrue ) { return `(${Expression} IS NOT TRUE)`; }
+		// ***An engine with no boolean expression type needs a third form.*** The two below name
+		// a comparison in a value position - `IS NOT TRUE` applies an operator to one, and the
+		// portable form asks `(X) IS NULL` about one - and Oracle permits neither. Both answer
+		// ORA-00907: missing right parenthesis, which reads like a bracket bug and is really the
+		// parser refusing a condition where it wants a value.
+		//
+		// CASE is the way to ask the question there: it takes a condition, and TRUE, FALSE and
+		// UNKNOWN are distinguishable because only TRUE takes the THEN branch. Verified against
+		// Oracle 21c over the three row corpus this comment's neighbours describe.
+		//
+		// ***LNNVL was the other candidate and it was rejected on measurement.*** It says
+		// exactly this in one word, but it accepts only a simple condition - `LNNVL(a AND b)` is
+		// a syntax error - and negate() is handed whole sub-expressions.
+		if ( Options.NegateWithCaseExpression ) { return `(CASE WHEN ${Expression} THEN 0 ELSE 1 END = 1)`; }
 		// The portable spelling, and the default. It says the same thing at the cost of naming
-		// the expression twice, and every engine has it.
+		// the expression twice, and every engine but Oracle has it.
 		return `((NOT ${Expression}) OR ${Expression} IS NULL)`;
 	}
 
@@ -347,6 +361,11 @@ module.exports = function ( jsonstor )
 		if ( typeof options.LikeEscapeClause === 'undefined' ) { options.LikeEscapeClause = false; }
 		// Whether the engine has IS NOT TRUE. See negate().
 		if ( typeof options.NegateWithIsNotTrue === 'undefined' ) { options.NegateWithIsNotTrue = false; }
+		// Whether the engine needs a CASE to negate, having no boolean expression type at all.
+		// Only Oracle sets this. See negate() for why it is a third option rather than a value
+		// of the one above: four adapters and their assertions already name that flag, and an
+		// enum would have changed all of them to record a difference in one engine.
+		if ( typeof options.NegateWithCaseExpression === 'undefined' ) { options.NegateWithCaseExpression = false; }
 		// Whether $mod renders. Neither MOD() nor TRUNCATE() is universal, and the truncation
 		// is load bearing rather than cosmetic - see the $mod case.
 		if ( typeof options.RendersModulo === 'undefined' ) { options.RendersModulo = false; }
@@ -365,6 +384,22 @@ module.exports = function ( jsonstor )
 		// and SQLite have always done and leaves both unchanged. See
 		// jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
 		if ( typeof options.RefusesTypeMismatch === 'undefined' ) { options.RefusesTypeMismatch = false; }
+		// ***How this engine spells a boolean literal, or whether it has one at all.***
+		//
+		// 'keyword' renders TRUE and FALSE, which four of the five SQL engines here accept.
+		// ***Oracle has neither the literal nor the type***: before 23c there is no BOOLEAN
+		// column, and `("b" = TRUE)` answers `ORA-00904: "TRUE": invalid identifier` - TRUE is
+		// read as a column name. Such an engine stores a boolean in a one digit number and
+		// compares against 1 and 0, which is what 'number' renders.
+		//
+		// ***This is the first option a Wave 1 dialect needed which was not already here***,
+		// and it is a spelling rather than a capability: dropping the predicate instead would
+		// have been safe, but it would have made every boolean question a table scan on the one
+		// engine which stores booleans most cheaply.
+		//
+		// The default is the spelling every existing adapter already renders, so none of them
+		// changes. See jsonx/.plans/sql-adapter-architecture.md, The Dialect Interface.
+		if ( typeof options.BooleanLiterals === 'undefined' ) { options.BooleanLiterals = 'keyword'; }
 		return options;
 	}
 
@@ -423,8 +458,9 @@ module.exports = function ( jsonstor )
 			//---------------------------------------------------------------------
 
 			case 'b':
-				if ( Criteria === true ) { return 'TRUE'; }
-				else if ( Criteria === false ) { return 'FALSE'; }
+				// See apply_defaults: an engine with no boolean literal spells it 1 and 0.
+				if ( Criteria === true ) { return ( options.BooleanLiterals === 'number' ) ? '1' : 'TRUE'; }
+				else if ( Criteria === false ) { return ( options.BooleanLiterals === 'number' ) ? '0' : 'FALSE'; }
 				else { throw new Error( `SqlExpression: Internal error 101` ); }
 				break;
 			case 'n':
