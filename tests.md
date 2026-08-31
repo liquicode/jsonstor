@@ -11,24 +11,24 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 | Suite                                               | Passing | Failing | Duration |
 |-----------------------------------------------------|--------:|--------:|---------:|
-| 010) SqlExpression Tests                            |      46 |       0 |      4ms |
-| 011) SqlExpression Coverage Tests                   |       9 |       0 |      3ms |
+| 010) SqlExpression Tests                            |      46 |       0 |      5ms |
+| 011) SqlExpression Coverage Tests                   |       9 |       0 |      2ms |
 | 012) MangoExpression Tests Registration             |       3 |       0 |      0ms |
-| 012) MangoExpression Tests Absorption               |       8 |       0 |      2ms |
+| 012) MangoExpression Tests Absorption               |       8 |       0 |      1ms |
 | 012) MangoExpression Tests Pruning                  |       9 |       0 |      1ms |
 | 012) MangoExpression Tests Narrowing the vocabulary |       4 |       0 |      0ms |
-| 012) MangoExpression Tests The invariant            |       3 |       0 |     76ms |
+| 012) MangoExpression Tests The invariant            |       3 |       0 |     70ms |
 | 020) OpLog Filter Tests                             |       4 |       0 |      3ms |
-| **total**                                           |  **86** |   **0** | **89ms** |
+| **total**                                           |  **86** |   **0** | **82ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |          D |          E |          F |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|-----------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (31ms) |  27/0 (3ms) |   7/0 (8ms) |  9/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) |  26/0 (3ms) |   39/0 (6ms) |  2/0 (0ms) |  **129/0** (54ms) |
-| jsonstor-jsonfile | 10/0 (2.75s) |  27/0 (0ms) | 7/0 (422ms) |  9/0 (6ms) |  6/0 (9ms) |  3/0 (0ms) |  26/0 (1ms) |  39/0 (12ms) | 2/0 (60ms) | **129/0** (3.26s) |
-| jsonstor-folder   | 10/0 (3.52s) | 27/0 (22ms) | 7/0 (392ms) | 9/0 (45ms) | 6/0 (33ms) | 3/0 (15ms) | 26/0 (51ms) | 39/0 (205ms) | 2/0 (20ms) | **129/0** (4.30s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (7.61s) |
+| jsonstor-memory   |  10/0 (29ms) |  27/0 (3ms) |   7/0 (5ms) |  9/0 (1ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (3ms) |   39/0 (3ms) |  2/0 (1ms) |  **129/0** (47ms) |
+| jsonstor-jsonfile | 10/0 (2.84s) |  27/0 (3ms) | 7/0 (400ms) |  9/0 (7ms) |  6/0 (4ms) |  3/0 (1ms) |  26/0 (1ms) |  39/0 (13ms) | 2/0 (53ms) | **129/0** (3.32s) |
+| jsonstor-folder   | 10/0 (3.48s) | 27/0 (21ms) | 7/0 (407ms) | 9/0 (41ms) | 6/0 (35ms) | 3/0 (16ms) | 26/0 (54ms) | 39/0 (178ms) | 2/0 (27ms) | **129/0** (4.26s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (7.63s) |
 
 Each cell is ***passing/failing (duration)***.
 
