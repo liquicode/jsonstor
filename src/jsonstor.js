@@ -37,13 +37,34 @@ module.exports = function ( AdapterName, Settings, Filters )
 		{
 			if ( jsongin.ShortType( Plugin ) === 'o' )
 			{
-				if ( Plugin.AdapterName ) 
+				if ( Plugin.AdapterName )
 				{
-					if ( typeof jsonstor.Adapters[ Plugin.AdapterName ] !== 'undefined' )
+					// ***A package may carry a family of adapters rather than one.*** A versioned
+					// package registers its bare name, which is the most recent version it serves,
+					// and one further name per server version - `jsonstor-mysql` beside
+					// `jsonstor-mysql-v5.7` and `jsonstor-mysql-v8.0`. A package declaring no
+					// `Adapters` registers exactly what it always did, so nothing which is not a
+					// family changes. See jsonx/.plans/versioned-adapters.md.
+					let adapters = [ Plugin ];
+					if ( jsongin.ShortType( Plugin.Adapters ) === 'a' )
 					{
-						throw new Error( `Storage adapter [${Plugin.AdapterName}] already exists.` );
+						adapters = adapters.concat( Plugin.Adapters );
 					}
-					jsonstor.Adapters[ Plugin.AdapterName ] = Plugin;
+					for ( let index = 0; index < adapters.length; index++ )
+					{
+						let adapter = adapters[ index ];
+						// ***A sibling which names itself nothing would register under `undefined`
+						// and be found by no caller***, so it is refused rather than stored.
+						if ( jsongin.ShortType( adapter.AdapterName ) !== 's' )
+						{
+							throw new Error( `Storage adapter [${Plugin.AdapterName}] has an entry in [Adapters] with no [AdapterName].` );
+						}
+						if ( typeof jsonstor.Adapters[ adapter.AdapterName ] !== 'undefined' )
+						{
+							throw new Error( `Storage adapter [${adapter.AdapterName}] already exists.` );
+						}
+						jsonstor.Adapters[ adapter.AdapterName ] = adapter;
+					}
 				}
 				else if ( Plugin.FilterName )
 				{

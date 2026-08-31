@@ -9,26 +9,28 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 ## Unit Tests
 
-| Suite                                               | Passing | Failing | Duration |
-|-----------------------------------------------------|--------:|--------:|---------:|
-| 010) SqlExpression Tests                            |      46 |       0 |      5ms |
-| 011) SqlExpression Coverage Tests                   |       9 |       0 |      2ms |
-| 012) MangoExpression Tests Registration             |       3 |       0 |      0ms |
-| 012) MangoExpression Tests Absorption               |       8 |       0 |      1ms |
-| 012) MangoExpression Tests Pruning                  |       9 |       0 |      1ms |
-| 012) MangoExpression Tests Narrowing the vocabulary |       4 |       0 |      0ms |
-| 012) MangoExpression Tests The invariant            |       3 |       0 |     70ms |
-| 020) OpLog Filter Tests                             |       4 |       0 |      3ms |
-| **total**                                           |  **86** |   **0** | **82ms** |
+| Suite                                                               | Passing | Failing | Duration |
+|---------------------------------------------------------------------|--------:|--------:|---------:|
+| 001) Adapter Registry Tests A package carrying a single adapter     |       3 |       0 |      1ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters |       5 |       0 |      0ms |
+| 010) SqlExpression Tests                                            |      46 |       0 |      4ms |
+| 011) SqlExpression Coverage Tests                                   |       9 |       0 |      3ms |
+| 012) MangoExpression Tests Registration                             |       3 |       0 |      1ms |
+| 012) MangoExpression Tests Absorption                               |       8 |       0 |      1ms |
+| 012) MangoExpression Tests Pruning                                  |       9 |       0 |      1ms |
+| 012) MangoExpression Tests Narrowing the vocabulary                 |       4 |       0 |      0ms |
+| 012) MangoExpression Tests The invariant                            |       3 |       0 |     67ms |
+| 020) OpLog Filter Tests                                             |       4 |       0 |      2ms |
+| **total**                                                           |  **94** |   **0** | **80ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |          D |          E |          F |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|-----------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (29ms) |  27/0 (3ms) |   7/0 (5ms) |  9/0 (1ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (3ms) |   39/0 (3ms) |  2/0 (1ms) |  **129/0** (47ms) |
-| jsonstor-jsonfile | 10/0 (2.84s) |  27/0 (3ms) | 7/0 (400ms) |  9/0 (7ms) |  6/0 (4ms) |  3/0 (1ms) |  26/0 (1ms) |  39/0 (13ms) | 2/0 (53ms) | **129/0** (3.32s) |
-| jsonstor-folder   | 10/0 (3.48s) | 27/0 (21ms) | 7/0 (407ms) | 9/0 (41ms) | 6/0 (35ms) | 3/0 (16ms) | 26/0 (54ms) | 39/0 (178ms) | 2/0 (27ms) | **129/0** (4.26s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (7.63s) |
+| jsonstor-memory   |  10/0 (29ms) |  27/0 (3ms) |   7/0 (7ms) |  9/0 (1ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (4ms) |   39/0 (3ms) |  2/0 (0ms) |  **129/0** (49ms) |
+| jsonstor-jsonfile | 10/0 (2.82s) |  27/0 (0ms) | 7/0 (552ms) |  9/0 (5ms) | 6/0 (10ms) |  3/0 (1ms) |  26/0 (1ms) |  39/0 (14ms) | 2/0 (43ms) | **129/0** (3.44s) |
+| jsonstor-folder   | 10/0 (3.56s) | 27/0 (22ms) | 7/0 (522ms) | 9/0 (79ms) | 6/0 (33ms) | 3/0 (86ms) | 26/0 (82ms) | 39/0 (334ms) | 2/0 (18ms) | **129/0** (4.74s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (8.23s) |
 
 Each cell is ***passing/failing (duration)***.
 
