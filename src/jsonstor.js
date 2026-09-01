@@ -9,6 +9,38 @@ const jsongin = require( '@liquicode/jsongin' );
 // is built once here rather than per instance. See src/jsonstor/Statistics.js.
 const STATISTICS = require( './jsonstor/Statistics' )();
 
+
+//---------------------------------------------------------------------
+// ***Compares two version arrays, shortest-first and element by element.***
+//
+// A missing element is a zero, so `[ 21, 3 ]` and `[ 21, 3, 0, 0, 0 ]` are the same version -
+// which they are, and which matters because a server states as many components as it likes and
+// a floor is written with as few as say what it means.
+function compare_versions( Left, Right )
+{
+	let length = Math.max( Left.length, Right.length );
+	for ( let index = 0; index < length; index++ )
+	{
+		let left = ( index < Left.length ) ? Left[ index ] : 0;
+		let right = ( index < Right.length ) ? Right[ index ] : 0;
+		if ( left !== right ) { return ( left < right ) ? -1 : 1; }
+	}
+	return 0;
+}
+
+
+//---------------------------------------------------------------------
+// ***A crossed boundary is tagged so a caller can tell it from a connection failure.***
+//
+// The distinction matters wherever the check is remembered: a crossed boundary is a permanent
+// fact about this storage and worth caching, and a server which simply did not answer is not.
+function boundary_error( Message )
+{
+	let error = new Error( Message );
+	error.DialectBoundary = true;
+	return error;
+}
+
 module.exports = function ( AdapterName, Settings, Filters )
 {
 	let _package = require( '../package.json' );
@@ -31,6 +63,10 @@ module.exports = function ( AdapterName, Settings, Filters )
 		// lets documentation say whether a name carries a profile or resolves to one, and it is
 		// where `DialectVersion` comes from. See jsonx/.plans/versioned-adapters.md.
 		AdapterAliases: {},
+		// ***Every registered name of a family, mapped to that family's prime names.*** The
+		// boundary check needs to know which profiles a package has in order to say whether a
+		// server landed in the wrong one, and a prime on its own does not know its siblings.
+		AdapterFamilies: {},
 		Filters: {},
 		// ***A criteria translator is the third kind of plugin.*** It turns a jsongin
 		// criteria into whatever its target backend can be asked, and reports what it
@@ -118,6 +154,23 @@ module.exports = function ( AdapterName, Settings, Filters )
 							}
 							jsonstor.Adapters[ alias_name ] = jsonstor.Adapters[ prime_name ];
 							jsonstor.AdapterAliases[ alias_name ] = prime_name;
+						}
+					}
+					// ***Every name of a family remembers the whole family.*** A prime knows its
+					// own floor and not its siblings', so the boundary check could not otherwise
+					// ask which profile a measured server ought to be using.
+					if ( ( jsongin.ShortType( Plugin.Adapters ) === 'a' ) && ( Plugin.Adapters.length > 0 ) )
+					{
+						let prime_names = Plugin.Adapters.map( function ( Prime ) { return Prime.AdapterName; } );
+						let every_name = prime_names.slice();
+						if ( !bare_is_alias ) { every_name.push( Plugin.AdapterName ); }
+						if ( jsongin.ShortType( Plugin.Aliases ) === 'o' )
+						{
+							every_name = every_name.concat( Object.keys( Plugin.Aliases ) );
+						}
+						for ( let index = 0; index < every_name.length; index++ )
+						{
+							jsonstor.AdapterFamilies[ every_name[ index ] ] = prime_names;
 						}
 					}
 				}
@@ -287,7 +340,7 @@ module.exports = function ( AdapterName, Settings, Filters )
 		{
 			if ( jsongin.ShortType( Facts ) !== 'o' ) { Facts = {}; }
 			let version = ( jsongin.ShortType( Facts.Version ) === 's' ) ? Facts.Version : '';
-			return {
+			let info = {
 				// ***Two names, because a caller asks for one and gets the behavior of another.***
 				Requested: Storage.AdapterName || '',
 				Dialect: Storage.DialectVersion || Storage.AdapterName || '',
@@ -301,6 +354,74 @@ module.exports = function ( AdapterName, Settings, Filters )
 				InProcess: ( Facts.InProcess === true ),
 				Warnings: Array.isArray( Facts.Warnings ) ? Facts.Warnings.slice() : [],
 			};
+			// ***Assembling the answer is where the boundary is checked***, so every adapter
+			// gets it by building its info and none of them has to remember to ask.
+			info.Warnings = info.Warnings.concat( jsonstor.CheckDialectBoundary( info ) );
+			return info;
+		},
+
+
+		//---------------------------------------------------------------------
+		// ***Did this server land in a different prime's range than the dialect in force?***
+		//
+		// A prime is a floor: it covers every version from its own upward until the next prime.
+		// So the profile a measured server *ought* to be using is the highest floor at or below
+		// it, and anything else means the storage is rendering SQL this server will not accept.
+		// ***That is an error and not a warning***, because the alternative is a sheet of
+		// failures which name a clause instead of naming the cause.
+		//
+		// ***A disagreement inside one prime's range is silent***, which is what makes the floor
+		// model do real work: a `-v14.24` name against a 14.25 server crosses no boundary, and
+		// that is the case which would otherwise break on every image pull.
+		//
+		// Returns warnings. Throws when a boundary is crossed. Answers nothing at all for a
+		// package with no primes, which is every package but one today.
+		CheckDialectBoundary: function ( Info )
+		{
+			let warnings = [];
+			let family = jsonstor.AdapterFamilies[ Info.Requested ];
+			if ( !Array.isArray( family ) ) { return warnings; }
+			if ( Info.VersionParts.length === 0 ) { return warnings; }
+
+			// ***Only the primes which declare a floor take part.*** A family may register names
+			// before anyone has measured what they cover, and guessing a floor would be worse
+			// than not checking.
+			let primes = [];
+			for ( let index = 0; index < family.length; index++ )
+			{
+				let prime = jsonstor.Adapters[ family[ index ] ];
+				if ( prime && Array.isArray( prime.Version ) && prime.Version.length ) { primes.push( prime ); }
+			}
+			if ( primes.length === 0 ) { return warnings; }
+			primes.sort( function ( Left, Right ) { return compare_versions( Left.Version, Right.Version ); } );
+
+			// ***Below every floor is its own failure***, and a clearer one than picking the
+			// lowest profile and letting the server refuse it.
+			if ( compare_versions( Info.VersionParts, primes[ 0 ].Version ) < 0 )
+			{
+				throw boundary_error( `[${Info.Requested}] was requested, but the connected server reports [${Info.Version}], which is older than [${primes[ 0 ].AdapterName}] - the oldest version this package supports.` );
+			}
+
+			let expected = primes[ 0 ];
+			for ( let index = 0; index < primes.length; index++ )
+			{
+				if ( compare_versions( Info.VersionParts, primes[ index ].Version ) >= 0 ) { expected = primes[ index ]; }
+			}
+			if ( expected.AdapterName !== Info.Dialect )
+			{
+				throw boundary_error( `[${Info.Requested}] was requested and uses the [${Info.Dialect}] dialect, but the connected server reports [${Info.Version}], which requires [${expected.AdapterName}].` );
+			}
+
+			// ***Past everything anyone has run is a warning and not an error.*** There is no
+			// boundary above it, so the profile is very likely right - but it is also a version
+			// nobody has measured, and staying silent would make the support claim this family
+			// is careful not to make.
+			if ( Array.isArray( expected.MeasuredTo ) && expected.MeasuredTo.length
+				&& ( compare_versions( Info.VersionParts, expected.MeasuredTo ) > 0 ) )
+			{
+				warnings.push( `The connected server reports [${Info.Version}], which is newer than [${expected.MeasuredTo.join( '.' )}] - the newest version [${expected.AdapterName}] has been measured against. It is untested here.` );
+			}
+			return warnings;
 		},
 
 

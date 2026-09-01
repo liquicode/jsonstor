@@ -180,6 +180,16 @@ declare module '@liquicode/jsonstor'
 		 * package's own AdapterName here makes the bare name an alias rather than an adapter.
 		 */
 		Aliases?: { [ AliasName: string ]: string };
+		/**
+		 * A prime's floor: the oldest server version this dialect covers. It covers every
+		 * version from here upward until the next prime. Only meaningful on a prime.
+		 */
+		Version?: number[];
+		/**
+		 * The newest server version this prime has actually been measured against. A server
+		 * past it is warned about rather than refused, since it is untested and not wrong.
+		 */
+		MeasuredTo?: number[];
 	}
 
 	export interface StorageFilterPlugin
@@ -269,6 +279,19 @@ declare module '@liquicode/jsonstor'
 
 		/** The leading run of dotted integers in a version string, and nothing after it. */
 		VersionParts( Version: string ): number[];
+
+		/**
+		 * Every registered name of a family, mapped to that family's prime names. Empty for a
+		 * package which registers one name.
+		 */
+		AdapterFamilies: { [ AdapterName: string ]: string[] };
+
+		/**
+		 * Whether a measured server landed in a different prime's range than the dialect in
+		 * force. Returns warnings; throws when a boundary is crossed. Called for you when an
+		 * adapter builds its StorageInfo.
+		 */
+		CheckDialectBoundary( Info: StorageInfo ): string[];
 		/** The registered storage filters, keyed by FilterName. */
 		Filters: { [ FilterName: string ]: StorageFilterPlugin };
 		/** The registered criteria translators, keyed by TranslatorName. */
