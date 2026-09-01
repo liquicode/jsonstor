@@ -12,25 +12,26 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | Suite                                                               | Passing | Failing | Duration |
 |---------------------------------------------------------------------|--------:|--------:|---------:|
 | 001) Adapter Registry Tests A package carrying a single adapter     |       3 |       0 |      1ms |
-| 001) Adapter Registry Tests A package carrying a family of adapters |       5 |       0 |      0ms |
-| 010) SqlExpression Tests                                            |      46 |       0 |      4ms |
-| 011) SqlExpression Coverage Tests                                   |       9 |       0 |      3ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters |       5 |       0 |      1ms |
+| 001) Adapter Registry Tests A package carrying aliases              |      12 |       0 |      0ms |
+| 010) SqlExpression Tests                                            |      46 |       0 |      5ms |
+| 011) SqlExpression Coverage Tests                                   |       9 |       0 |      1ms |
 | 012) MangoExpression Tests Registration                             |       3 |       0 |      1ms |
-| 012) MangoExpression Tests Absorption                               |       8 |       0 |      1ms |
+| 012) MangoExpression Tests Absorption                               |       8 |       0 |      0ms |
 | 012) MangoExpression Tests Pruning                                  |       9 |       0 |      1ms |
 | 012) MangoExpression Tests Narrowing the vocabulary                 |       4 |       0 |      0ms |
-| 012) MangoExpression Tests The invariant                            |       3 |       0 |     67ms |
-| 020) OpLog Filter Tests                                             |       4 |       0 |      2ms |
-| **total**                                                           |  **94** |   **0** | **80ms** |
+| 012) MangoExpression Tests The invariant                            |       3 |       0 |     70ms |
+| 020) OpLog Filter Tests                                             |       4 |       0 |      3ms |
+| **total**                                                           | **106** |   **0** | **83ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |          D |          E |          F |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|-----------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (29ms) |  27/0 (3ms) |   7/0 (7ms) |  9/0 (1ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (4ms) |   39/0 (3ms) |  2/0 (0ms) |  **129/0** (49ms) |
-| jsonstor-jsonfile | 10/0 (2.82s) |  27/0 (0ms) | 7/0 (552ms) |  9/0 (5ms) | 6/0 (10ms) |  3/0 (1ms) |  26/0 (1ms) |  39/0 (14ms) | 2/0 (43ms) | **129/0** (3.44s) |
-| jsonstor-folder   | 10/0 (3.56s) | 27/0 (22ms) | 7/0 (522ms) | 9/0 (79ms) | 6/0 (33ms) | 3/0 (86ms) | 26/0 (82ms) | 39/0 (334ms) | 2/0 (18ms) | **129/0** (4.74s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (8.23s) |
+| jsonstor-memory   |  10/0 (30ms) |  27/0 (2ms) |   7/0 (4ms) |  9/0 (2ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (1ms) |   39/0 (5ms) |  2/0 (0ms) |  **129/0** (46ms) |
+| jsonstor-jsonfile | 10/0 (3.14s) |  27/0 (1ms) | 7/0 (398ms) |  9/0 (6ms) |  6/0 (5ms) |  3/0 (0ms) |  26/0 (1ms) |  39/0 (16ms) | 2/0 (53ms) | **129/0** (3.62s) |
+| jsonstor-folder   | 10/0 (3.68s) | 27/0 (23ms) | 7/0 (459ms) | 9/0 (47ms) | 6/0 (36ms) | 3/0 (14ms) | 26/0 (55ms) | 39/0 (198ms) | 2/0 (20ms) | **129/0** (4.53s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |   **27/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **387/0** (8.20s) |
 
 Each cell is ***passing/failing (duration)***.
 
