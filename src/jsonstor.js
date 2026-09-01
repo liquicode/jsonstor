@@ -25,6 +25,12 @@ module.exports = function ( AdapterName, Settings, Filters )
 
 		//---------------------------------------------------------------------
 		Adapters: {},
+		// ***Which registered names are aliases, and what each one resolves to.*** A name in
+		// `Adapters` and not in here is a ***prime***: it carries a dialect profile of its own.
+		// A name in both is an alias onto a prime, and shares that prime's adapter. This is what
+		// lets documentation say whether a name carries a profile or resolves to one, and it is
+		// where `DialectVersion` comes from. See jsonx/.plans/versioned-adapters.md.
+		AdapterAliases: {},
 		Filters: {},
 		// ***A criteria translator is the third kind of plugin.*** It turns a jsongin
 		// criteria into whatever its target backend can be asked, and reports what it
@@ -39,13 +45,25 @@ module.exports = function ( AdapterName, Settings, Filters )
 			{
 				if ( Plugin.AdapterName )
 				{
-					// ***A package may carry a family of adapters rather than one.*** A versioned
-					// package registers its bare name, which is the most recent version it serves,
-					// and one further name per server version - `jsonstor-mysql` beside
-					// `jsonstor-mysql-v5.7` and `jsonstor-mysql-v8.0`. A package declaring no
-					// `Adapters` registers exactly what it always did, so nothing which is not a
-					// family changes. See jsonx/.plans/versioned-adapters.md.
-					let adapters = [ Plugin ];
+					// ***A package may carry a family of adapters rather than one.*** `Adapters`
+					// holds its ***primes*** - the versions which differ in behavior, each with a
+					// dialect profile of its own - and `Aliases` names everything else, including
+					// the bare name. So `jsonstor-mysql-v5.7` is a prime beside
+					// `jsonstor-mysql-v8.0` only if the two actually render differently;
+					// otherwise one is an alias onto the other. A package declaring neither
+					// registers exactly what it always did, so nothing which is not a family
+					// changes. See jsonx/.plans/versioned-adapters.md.
+					// ***The bare name is an alias whenever the package says it is.*** A family
+					// names its default in `Aliases` rather than serving it from the plugin
+					// object, so that `GetStorage( 'jsonstor-mysql' )` reports the prime it
+					// resolved to instead of reporting itself. The plugin then registers only its
+					// siblings, and the alias pass below claims the bare name. A package which
+					// does not do this keeps registering the plugin under its own name, which is
+					// every package written so far.
+					let bare_is_alias =
+						( jsongin.ShortType( Plugin.Aliases ) === 'o' )
+						&& ( typeof Plugin.Aliases[ Plugin.AdapterName ] !== 'undefined' );
+					let adapters = bare_is_alias ? [] : [ Plugin ];
 					if ( jsongin.ShortType( Plugin.Adapters ) === 'a' )
 					{
 						adapters = adapters.concat( Plugin.Adapters );
@@ -64,6 +82,43 @@ module.exports = function ( AdapterName, Settings, Filters )
 							throw new Error( `Storage adapter [${adapter.AdapterName}] already exists.` );
 						}
 						jsonstor.Adapters[ adapter.AdapterName ] = adapter;
+					}
+					// ***Aliases register last, because every one of them names a prime which
+					// must already be there.*** An alias carries no dialect profile of its own -
+					// it shares the prime's adapter - so this loop stores the same object under
+					// a second name and records the resolution.
+					if ( jsongin.ShortType( Plugin.Aliases ) === 'o' )
+					{
+						let alias_names = Object.keys( Plugin.Aliases );
+						for ( let index = 0; index < alias_names.length; index++ )
+						{
+							let alias_name = alias_names[ index ];
+							let prime_name = Plugin.Aliases[ alias_name ];
+							if ( jsongin.ShortType( prime_name ) !== 's' )
+							{
+								throw new Error( `Storage adapter [${Plugin.AdapterName}] has an alias [${alias_name}] which names no adapter.` );
+							}
+							// ***An unknown target is refused at load time*** rather than at the
+							// GetStorage which happens to ask for it, because a typo here is a
+							// mistake in the package and not in the caller.
+							if ( typeof jsonstor.Adapters[ prime_name ] === 'undefined' )
+							{
+								throw new Error( `Storage adapter [${Plugin.AdapterName}] has an alias [${alias_name}] naming [${prime_name}], which is not registered.` );
+							}
+							// ***An alias names a prime and never another alias.*** Chaining
+							// would make the resolution order-dependent and would let
+							// `DialectVersion` report a name which carries no profile.
+							if ( typeof jsonstor.AdapterAliases[ prime_name ] !== 'undefined' )
+							{
+								throw new Error( `Storage adapter [${Plugin.AdapterName}] has an alias [${alias_name}] naming [${prime_name}], which is itself an alias. An alias must name a prime.` );
+							}
+							if ( typeof jsonstor.Adapters[ alias_name ] !== 'undefined' )
+							{
+								throw new Error( `Storage adapter [${alias_name}] already exists.` );
+							}
+							jsonstor.Adapters[ alias_name ] = jsonstor.Adapters[ prime_name ];
+							jsonstor.AdapterAliases[ alias_name ] = prime_name;
+						}
 					}
 				}
 				else if ( Plugin.FilterName )
@@ -124,7 +179,12 @@ module.exports = function ( AdapterName, Settings, Filters )
 			if ( 'lu'.includes( jsongin.ShortType( Settings ) ) ) { Settings = {}; }
 			if ( typeof jsonstor.Adapters[ AdapterName ] === 'undefined' ) { throw new Error( `Storage adapter [${AdapterName}] is not loaded.` ); }
 			let storage = jsonstor.Adapters[ AdapterName ].GetAdapter( jsonstor, Settings );
+			// ***Two names, because a caller asks for one and gets the behavior of another.***
+			// `AdapterName` is what was asked for and `DialectVersion` is the prime it resolved
+			// to, which is the name that says which dialect profile is actually running. They are
+			// the same string whenever the caller named a prime directly.
 			storage.AdapterName = AdapterName;
+			storage.DialectVersion = jsonstor.AdapterAliases[ AdapterName ] || AdapterName;
 			if ( Array.isArray( Filters ) )
 			{
 				for ( let index = 0; index < Filters.length; index++ )

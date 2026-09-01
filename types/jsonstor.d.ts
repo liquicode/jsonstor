@@ -105,8 +105,14 @@ declare module '@liquicode/jsonstor'
 
 		/** The settings this storage was constructed with. */
 		Settings?: JsonDocument;
-		/** Stamped on by GetStorage(), naming the adapter which made it. */
+		/** Stamped on by GetStorage(), naming the adapter which was asked for. */
 		AdapterName?: string;
+		/**
+		 * Stamped on by GetStorage(), naming the prime this storage's dialect comes from.
+		 * The same string as AdapterName whenever a prime was named directly, and the prime
+		 * an alias resolved to otherwise.
+		 */
+		DialectVersion?: string;
 		/** Stamped on by GetFilter(), naming the filter which wrapped it. */
 		FilterName?: string;
 
@@ -125,6 +131,17 @@ declare module '@liquicode/jsonstor'
 		AdapterName: string;
 		AdapterDescription?: string;
 		GetAdapter( jsonstor: Jsonstor, Settings: JsonDocument ): Storage;
+		/**
+		 * The package's prime versions - the ones which differ in behavior, each carrying a
+		 * dialect profile of its own. A package with one implementation declares none.
+		 */
+		Adapters?: StorageAdapterPlugin[];
+		/**
+		 * Every other name this package answers to, each mapped to the prime it resolves to.
+		 * A prime named here would be a mistake; an alias must name a prime. Naming the
+		 * package's own AdapterName here makes the bare name an alias rather than an adapter.
+		 */
+		Aliases?: { [ AliasName: string ]: string };
 	}
 
 	export interface StorageFilterPlugin
@@ -197,8 +214,13 @@ declare module '@liquicode/jsonstor'
 	{
 		Library: LibraryInfo;
 
-		/** The registered storage adapters, keyed by AdapterName. */
+		/** The registered storage adapters, keyed by AdapterName. Primes and aliases alike. */
 		Adapters: { [ AdapterName: string ]: StorageAdapterPlugin };
+		/**
+		 * Which registered names are aliases, each mapped to the prime it resolves to.
+		 * A name in Adapters and absent here is a prime: it carries a dialect profile.
+		 */
+		AdapterAliases: { [ AliasName: string ]: string };
 		/** The registered storage filters, keyed by FilterName. */
 		Filters: { [ FilterName: string ]: StorageFilterPlugin };
 		/** The registered criteria translators, keyed by TranslatorName. */
