@@ -46,6 +46,11 @@ module.exports = function ()
 	// first argument of DropStorage and the fifth of FindMany2 - and reading the last argument
 	// instead would guess wrongly the moment a caller omitted an optional one. FindMany2 is
 	// listed here although StorageInterface() does not declare it, because the adapters do.
+	//
+	// ***StorageInfo is deliberately absent.*** It asks about the storage rather than about the
+	// documents in it, so it has no Pushdown and no Residual to collect - and being listed here
+	// would make it accept Options.Statistics and answer `{ Result, Statistics }`, which is not
+	// the shape its caller wants. See jsonx/.plans/versioned-adapters.md.
 	const STORAGE_FUNCTIONS = {
 		DropStorage: 0,
 		FlushStorage: 0,

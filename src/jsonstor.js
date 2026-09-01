@@ -264,8 +264,57 @@ module.exports = function ( AdapterName, Settings, Filters )
 				ReplaceOne: async function ( Criteria, Document, Options ) { throw new Error( 'ReplaceOne is not implemeted.' ); },
 				DeleteOne: async function ( Criteria, Options ) { throw new Error( 'DeleteOne is not implemeted.' ); },
 				DeleteMany: async function ( Criteria, Options ) { throw new Error( 'DeleteMany is not implemeted.' ); },
+				// ***The thirteenth method, and the only one which asks about the storage rather
+				// than about the documents in it.*** A developer chooses which adapter to use and
+				// nothing in this family checks a version and refuses, so the family owes them
+				// the fact instead of the judgement. Spelled correctly, unlike its twelve
+				// siblings. See jsonx/.plans/versioned-adapters.md.
+				StorageInfo: async function ( Options ) { throw new Error( 'StorageInfo is not implemented.' ); },
 			};
 			return storage;
+		},
+
+
+		//---------------------------------------------------------------------
+		// ***Assembles the thirteenth method's answer so that ten adapters do not each do it.***
+		//
+		// An adapter knows what its server said and nothing else here: the names come from the
+		// storage, and the parse comes from the raw string. ***The raw string survives beside the
+		// parse*** because Oracle answers `21.3.0.0.0` and PostgreSql answers
+		// `16.15 (Debian 16.15-1.pgdg13+2)`, parsing either can be wrong, and a developer who
+		// needs to see what the server really said should not have to take our word for it.
+		BuildStorageInfo: function ( Storage, Facts )
+		{
+			if ( jsongin.ShortType( Facts ) !== 'o' ) { Facts = {}; }
+			let version = ( jsongin.ShortType( Facts.Version ) === 's' ) ? Facts.Version : '';
+			return {
+				// ***Two names, because a caller asks for one and gets the behavior of another.***
+				Requested: Storage.AdapterName || '',
+				Dialect: Storage.DialectVersion || Storage.AdapterName || '',
+				Product: ( jsongin.ShortType( Facts.Product ) === 's' ) ? Facts.Product : '',
+				Version: version,
+				VersionParts: jsonstor.VersionParts( version ),
+				Banner: ( jsongin.ShortType( Facts.Banner ) === 's' ) ? Facts.Banner : version,
+				// ***Empty when in-process***, so no caller has to special-case an adapter which
+				// is not talking to anything over a socket.
+				Endpoint: ( jsongin.ShortType( Facts.Endpoint ) === 's' ) ? Facts.Endpoint : '',
+				InProcess: ( Facts.InProcess === true ),
+				Warnings: Array.isArray( Facts.Warnings ) ? Facts.Warnings.slice() : [],
+			};
+		},
+
+
+		//---------------------------------------------------------------------
+		// ***The leading run of dotted integers, and nothing after it.***
+		//
+		// Every server in this family states its version differently and several bury it in
+		// prose. This takes what can be compared and leaves the rest to `Banner`.
+		VersionParts: function ( Version )
+		{
+			if ( jsongin.ShortType( Version ) !== 's' ) { return []; }
+			let found = Version.match( /(\d+(?:\.\d+)*)/ );
+			if ( found === null ) { return []; }
+			return found[ 1 ].split( '.' ).map( function ( Part ) { return parseInt( Part, 10 ); } );
 		},
 
 

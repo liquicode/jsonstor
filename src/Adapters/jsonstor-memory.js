@@ -54,7 +54,21 @@ module.exports = {
 		//=====================================================================
 
 
-		Storage.DropStorage = async function ( Options ) 
+		// ***What this storage is actually talking to.*** An in-process adapter reports the
+		// version of whatever implements it, which here is the engine every one of these
+		// adapters is built on. Uniform, so no caller has to special-case a storage with no
+		// server to ask.
+		Storage.StorageInfo = async function ( Options )
+		{
+			return jsonstor.BuildStorageInfo( Storage, {
+				Product: 'jsongin',
+				Version: jsongin.Library.version,
+				InProcess: true,
+			} );
+		};
+
+
+		Storage.DropStorage = async function ( Options )
 		{
 			return new Promise(
 				async function ( resolve, reject )

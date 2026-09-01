@@ -103,6 +103,13 @@ declare module '@liquicode/jsonstor'
 		DeleteOne( Criteria: QueryCriteria, Options?: JsonDocument ): Promise<any>;
 		DeleteMany( Criteria?: QueryCriteria, Options?: JsonDocument ): Promise<any>;
 
+		/**
+		 * What this storage is actually talking to: the name asked for, the dialect in force,
+		 * and the version the server reported. Every adapter answers, including the ones with
+		 * no server - an in-process adapter reports whatever implements it.
+		 */
+		StorageInfo( Options?: JsonDocument ): Promise<StorageInfo>;
+
 		/** The settings this storage was constructed with. */
 		Settings?: JsonDocument;
 		/** Stamped on by GetStorage(), naming the adapter which was asked for. */
@@ -117,6 +124,37 @@ declare module '@liquicode/jsonstor'
 		FilterName?: string;
 
 		[ MemberName: string ]: any;
+	}
+
+
+	//---------------------------------------------------------------------
+	// What a storage says about itself.
+	//
+	// ***The raw string survives beside the parse.*** Oracle answers `21.3.0.0.0` and
+	// PostgreSql answers `16.15 (Debian 16.15-1.pgdg13+2)`; parsing either can be wrong, and a
+	// caller who needs to see what the server really said should not have to take our word
+	// for it.
+
+	export interface StorageInfo
+	{
+		/** The adapter name this storage was constructed with. */
+		Requested: string;
+		/** The prime that name resolved to, which is the dialect actually in force. */
+		Dialect: string;
+		/** The product underneath, e.g. `'MySQL'`. An in-process adapter names its library. */
+		Product: string;
+		/** The version as reported, verbatim. */
+		Version: string;
+		/** That version parsed into numbers, for comparison. */
+		VersionParts: number[];
+		/** Whatever the server said, unparsed. The same as `Version` when there is no banner. */
+		Banner: string;
+		/** `host:port`, and empty when the storage is in-process. */
+		Endpoint: string;
+		/** True when nothing is reached over a socket. */
+		InProcess: boolean;
+		/** Anything noticed about this storage which is not an error. */
+		Warnings: string[];
 	}
 
 
@@ -221,6 +259,16 @@ declare module '@liquicode/jsonstor'
 		 * A name in Adapters and absent here is a prime: it carries a dialect profile.
 		 */
 		AdapterAliases: { [ AliasName: string ]: string };
+
+		/**
+		 * Assembles a StorageInfo from the facts an adapter knows, filling in the names from
+		 * the storage and the parse from the raw version string. Adapters call this rather
+		 * than each assembling the same object.
+		 */
+		BuildStorageInfo( Storage: Storage, Facts: JsonDocument ): StorageInfo;
+
+		/** The leading run of dotted integers in a version string, and nothing after it. */
+		VersionParts( Version: string ): number[];
 		/** The registered storage filters, keyed by FilterName. */
 		Filters: { [ FilterName: string ]: StorageFilterPlugin };
 		/** The registered criteria translators, keyed by TranslatorName. */
