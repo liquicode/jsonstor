@@ -9,35 +9,44 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 ## Unit Tests
 
-| Suite                                                                | Passing | Failing | Duration |
-|----------------------------------------------------------------------|--------:|--------:|---------:|
-| 001) Adapter Registry Tests A package carrying a single adapter      |       3 |       0 |      1ms |
-| 001) Adapter Registry Tests A package carrying a family of adapters  |       5 |       0 |      0ms |
-| 001) Adapter Registry Tests A package carrying aliases               |      12 |       0 |      2ms |
-| 002) Dialect Boundary Tests The registry knows a family              |       2 |       0 |      0ms |
-| 002) Dialect Boundary Tests A server inside its prime range          |       3 |       0 |      2ms |
-| 002) Dialect Boundary Tests A server which crossed a boundary        |       4 |       0 |      1ms |
-| 002) Dialect Boundary Tests A server newer than the dialect in force |       3 |       0 |      0ms |
-| 002) Dialect Boundary Tests A server past everything measured        |       3 |       0 |      0ms |
-| 002) Dialect Boundary Tests Nothing to check                         |       2 |       0 |      0ms |
-| 010) SqlExpression Tests                                             |      46 |       0 |      3ms |
-| 011) SqlExpression Coverage Tests                                    |       9 |       0 |      3ms |
-| 012) MangoExpression Tests Registration                              |       3 |       0 |      0ms |
-| 012) MangoExpression Tests Absorption                                |       8 |       0 |      1ms |
-| 012) MangoExpression Tests Pruning                                   |       9 |       0 |      1ms |
-| 012) MangoExpression Tests Narrowing the vocabulary                  |       4 |       0 |      0ms |
-| 012) MangoExpression Tests The invariant                             |       3 |       0 |     67ms |
-| 020) OpLog Filter Tests                                              |       4 |       0 |      3ms |
-| **total**                                                            | **123** |   **0** | **84ms** |
+| Suite                                                                                           | Passing | Failing | Duration |
+|-------------------------------------------------------------------------------------------------|--------:|--------:|---------:|
+| 001) Adapter Registry Tests A package carrying a single adapter                                 |       3 |       0 |      1ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters                             |       5 |       0 |      1ms |
+| 001) Adapter Registry Tests A package carrying aliases                                          |      12 |       0 |      2ms |
+| 002) Dialect Boundary Tests The registry knows a family                                         |       2 |       0 |      1ms |
+| 002) Dialect Boundary Tests A server inside its prime range                                     |       3 |       0 |      0ms |
+| 002) Dialect Boundary Tests A server which crossed a boundary                                   |       4 |       0 |      1ms |
+| 002) Dialect Boundary Tests A server newer than the dialect in force                            |       3 |       0 |      1ms |
+| 002) Dialect Boundary Tests A server past everything measured                                   |       3 |       0 |      0ms |
+| 002) Dialect Boundary Tests Nothing to check                                                    |       2 |       0 |      0ms |
+| 003) Dialect Profile Tests Every profile in the run is one this file records                    |       2 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mysql-v5.7      |       4 |       0 |      1ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-postgres-v10.21 |       4 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v18.0    |       4 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v23.26   |       4 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mssql-v14.0     |       4 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-sqlite          |       4 |       0 |      0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-duckdb          |       4 |       0 |      1ms |
+| 003) Dialect Profile Tests What a version boundary changes                                      |       4 |       0 |      0ms |
+| 010) SqlExpression Tests                                                                        |      46 |       0 |      6ms |
+| 011) SqlExpression Coverage Tests                                                               |       9 |       0 |      1ms |
+| 012) MangoExpression Tests Registration                                                         |       3 |       0 |      0ms |
+| 012) MangoExpression Tests Absorption                                                           |       8 |       0 |      1ms |
+| 012) MangoExpression Tests Pruning                                                              |       9 |       0 |      1ms |
+| 012) MangoExpression Tests Narrowing the vocabulary                                             |       4 |       0 |      0ms |
+| 012) MangoExpression Tests The invariant                                                        |       3 |       0 |     68ms |
+| 020) OpLog Filter Tests                                                                         |       4 |       0 |      2ms |
+| **total**                                                                                       | **157** |   **0** | **88ms** |
 
 ## Engine Tests
 
-| Engine            |            A |           B |           C |           D |          E |          F |            M |            N |          Z |             Total |
-|-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|-------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (31ms) |  27/0 (3ms) |   7/0 (4ms) |  14/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) |   26/0 (3ms) |   39/0 (7ms) |  2/0 (1ms) |  **134/0** (52ms) |
-| jsonstor-jsonfile | 10/0 (2.64s) |  27/0 (1ms) | 7/0 (426ms) |  14/0 (6ms) | 6/0 (10ms) |  3/0 (0ms) |   26/0 (1ms) |  39/0 (16ms) | 2/0 (54ms) | **134/0** (3.16s) |
-| jsonstor-folder   | 10/0 (3.35s) | 27/0 (22ms) | 7/0 (401ms) | 14/0 (45ms) | 6/0 (35ms) | 3/0 (16ms) | 26/0 (130ms) | 39/0 (178ms) | 2/0 (25ms) | **134/0** (4.20s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |     **78/0** |    **117/0** |    **6/0** | **402/0** (7.41s) |
+| Engine            |            A |           B |           C |           D |          E |          F |           M |            N |          Z |             Total |
+|-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
+| jsonstor-memory   |  10/0 (30ms) |  27/0 (1ms) |   7/0 (5ms) |  14/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) |  26/0 (2ms) |   39/0 (3ms) |  2/0 (0ms) |  **134/0** (44ms) |
+| jsonstor-jsonfile | 10/0 (2.68s) |  27/0 (1ms) | 7/0 (426ms) |  14/0 (6ms) |  6/0 (4ms) |  3/0 (1ms) |  26/0 (3ms) |  39/0 (13ms) | 2/0 (62ms) | **134/0** (3.20s) |
+| jsonstor-folder   | 10/0 (3.34s) | 27/0 (21ms) | 7/0 (376ms) | 14/0 (42ms) | 6/0 (34ms) | 3/0 (15ms) | 26/0 (52ms) | 39/0 (174ms) | 2/0 (17ms) | **134/0** (4.07s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **402/0** (7.31s) |
 
 Each cell is ***passing/failing (duration)***.
 
