@@ -9,34 +9,35 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 ## Unit Tests
 
-| Suite                                                               | Passing | Failing | Duration |
-|---------------------------------------------------------------------|--------:|--------:|---------:|
-| 001) Adapter Registry Tests A package carrying a single adapter     |       3 |       0 |      1ms |
-| 001) Adapter Registry Tests A package carrying a family of adapters |       5 |       0 |      1ms |
-| 001) Adapter Registry Tests A package carrying aliases              |      12 |       0 |      1ms |
-| 002) Dialect Boundary Tests The registry knows a family             |       2 |       0 |      1ms |
-| 002) Dialect Boundary Tests A server inside its prime range         |       3 |       0 |      0ms |
-| 002) Dialect Boundary Tests A server which crossed a boundary       |       5 |       0 |      1ms |
-| 002) Dialect Boundary Tests A server past everything measured       |       3 |       0 |      1ms |
-| 002) Dialect Boundary Tests Nothing to check                        |       2 |       0 |      0ms |
-| 010) SqlExpression Tests                                            |      46 |       0 |      5ms |
-| 011) SqlExpression Coverage Tests                                   |       9 |       0 |      3ms |
-| 012) MangoExpression Tests Registration                             |       3 |       0 |      0ms |
-| 012) MangoExpression Tests Absorption                               |       8 |       0 |      0ms |
-| 012) MangoExpression Tests Pruning                                  |       9 |       0 |      0ms |
-| 012) MangoExpression Tests Narrowing the vocabulary                 |       4 |       0 |      0ms |
-| 012) MangoExpression Tests The invariant                            |       3 |       0 |     79ms |
-| 020) OpLog Filter Tests                                             |       4 |       0 |      3ms |
-| **total**                                                           | **121** |   **0** | **96ms** |
+| Suite                                                                | Passing | Failing |  Duration |
+|----------------------------------------------------------------------|--------:|--------:|----------:|
+| 001) Adapter Registry Tests A package carrying a single adapter      |       3 |       0 |       2ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters  |       5 |       0 |       1ms |
+| 001) Adapter Registry Tests A package carrying aliases               |      12 |       0 |       2ms |
+| 002) Dialect Boundary Tests The registry knows a family              |       2 |       0 |       1ms |
+| 002) Dialect Boundary Tests A server inside its prime range          |       3 |       0 |       0ms |
+| 002) Dialect Boundary Tests A server which crossed a boundary        |       4 |       0 |       0ms |
+| 002) Dialect Boundary Tests A server newer than the dialect in force |       3 |       0 |       0ms |
+| 002) Dialect Boundary Tests A server past everything measured        |       3 |       0 |       0ms |
+| 002) Dialect Boundary Tests Nothing to check                         |       2 |       0 |       0ms |
+| 010) SqlExpression Tests                                             |      46 |       0 |       6ms |
+| 011) SqlExpression Coverage Tests                                    |       9 |       0 |       3ms |
+| 012) MangoExpression Tests Registration                              |       3 |       0 |       1ms |
+| 012) MangoExpression Tests Absorption                                |       8 |       0 |       2ms |
+| 012) MangoExpression Tests Pruning                                   |       9 |       0 |       1ms |
+| 012) MangoExpression Tests Narrowing the vocabulary                  |       4 |       0 |       1ms |
+| 012) MangoExpression Tests The invariant                             |       3 |       0 |     121ms |
+| 020) OpLog Filter Tests                                              |       4 |       0 |       3ms |
+| **total**                                                            | **123** |   **0** | **144ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |           D |          E |          F |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (31ms) |  27/0 (2ms) |   7/0 (6ms) |  13/0 (2ms) |  6/0 (0ms) |  3/0 (0ms) |  26/0 (2ms) |   39/0 (4ms) |  2/0 (0ms) |  **133/0** (47ms) |
-| jsonstor-jsonfile | 10/0 (2.84s) |  27/0 (0ms) | 7/0 (432ms) |  13/0 (5ms) | 6/0 (11ms) |  3/0 (0ms) |  26/0 (0ms) |  39/0 (11ms) | 2/0 (54ms) | **133/0** (3.35s) |
-| jsonstor-folder   | 10/0 (3.33s) | 27/0 (19ms) | 7/0 (377ms) | 13/0 (48ms) | 6/0 (38ms) | 3/0 (16ms) | 26/0 (50ms) | 39/0 (174ms) | 2/0 (21ms) | **133/0** (4.08s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |    **39/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **399/0** (7.47s) |
+| jsonstor-memory   |  10/0 (41ms) |  27/0 (3ms) |   7/0 (9ms) |  14/0 (3ms) |  6/0 (1ms) |  3/0 (1ms) |  26/0 (2ms) |   39/0 (5ms) |  2/0 (1ms) |  **134/0** (66ms) |
+| jsonstor-jsonfile | 10/0 (3.86s) |  27/0 (2ms) | 7/0 (460ms) |  14/0 (8ms) |  6/0 (5ms) |  3/0 (1ms) |  26/0 (4ms) |  39/0 (17ms) | 2/0 (78ms) | **134/0** (4.44s) |
+| jsonstor-folder   | 10/0 (4.34s) | 27/0 (41ms) | 7/0 (503ms) | 14/0 (57ms) | 6/0 (46ms) | 3/0 (25ms) | 26/0 (62ms) | 39/0 (233ms) | 2/0 (23ms) | **134/0** (5.33s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **402/0** (9.84s) |
 
 Each cell is ***passing/failing (duration)***.
 

@@ -30,6 +30,23 @@ function compare_versions( Left, Right )
 
 
 //---------------------------------------------------------------------
+// ***The floor of the prime a storage is actually rendering with.***
+//
+// The check compares the profile a server ought to be using against the one in force, and
+// which of the two is newer is what decides between an error and a warning. A dialect which
+// names no prime in this family answers the lowest floor, so an unrecognized name is treated
+// as the oldest profile rather than as a crossing nobody can act on.
+function dialect_floor( Primes, DialectName )
+{
+	for ( let index = 0; index < Primes.length; index++ )
+	{
+		if ( Primes[ index ].AdapterName === DialectName ) { return Primes[ index ].Version; }
+	}
+	return Primes[ 0 ].Version;
+}
+
+
+//---------------------------------------------------------------------
 // ***A crossed boundary is tagged so a caller can tell it from a connection failure.***
 //
 // The distinction matters wherever the check is remembered: a crossed boundary is a permanent
@@ -407,6 +424,29 @@ module.exports = function ( AdapterName, Settings, Filters )
 			{
 				if ( compare_versions( Info.VersionParts, primes[ index ].Version ) >= 0 ) { expected = primes[ index ]; }
 			}
+
+			// ***The two directions are not the same failure, and only one of them is one.***
+			//
+			// A dialect ***newer*** than the server renders SQL the server will refuse, and that
+			// is an error: Oracle 18.0 answers ORA-00933 to the 23c spelling, and the
+			// alternative is a sheet of failures which name a clause instead of the cause.
+			//
+			// ***A dialect older than the server is merely slow.*** Every option a profile
+			// declines to render is a predicate `jsongin` decides instead, so the answer is the
+			// same one and fewer rows are pre-filtered - which is `SqlExpression.apply_defaults`
+			// in one sentence: declaring nothing is always correct, and merely slow. ***Measured
+			// on 2026-09-01***, the `jsonstor-oracle-v18.0` profile against the 23.26 server
+			// answered every case correctly, including against a table holding a real `BOOLEAN`
+			// column it does not understand. Refusing that would refuse something which works.
+			//
+			// *(User, 2026-09-01, on the measurement. This narrows the rule of the same day that
+			// any crossing is an error; it stands for the direction which is actually broken.)*
+			let expected_is_newer = ( compare_versions( expected.Version, dialect_floor( primes, Info.Dialect ) ) > 0 );
+			if ( ( expected.AdapterName !== Info.Dialect ) && expected_is_newer )
+			{
+				warnings.push( `The connected server reports [${Info.Version}], which is newer than the range [${Info.Dialect}] covers. [${expected.AdapterName}] is the profile for it; this one answers correctly and pre-filters less.` );
+				return warnings;
+			}
 			if ( expected.AdapterName !== Info.Dialect )
 			{
 				throw boundary_error( `[${Info.Requested}] was requested and uses the [${Info.Dialect}] dialect, but the connected server reports [${Info.Version}], which requires [${expected.AdapterName}].` );
@@ -416,6 +456,13 @@ module.exports = function ( AdapterName, Settings, Filters )
 			// boundary above it, so the profile is very likely right - but it is also a version
 			// nobody has measured, and staying silent would make the support claim this family
 			// is careful not to make.
+			//
+			// ***So a prime records the ceiling at the precision it was measured at.*** The
+			// comparison zero-pads, which means `MeasuredTo: [ 21, 3 ]` covers a server
+			// reporting 21.3.0.0.0 and `[ 8, 4 ]` does ***not*** cover one reporting 8.4.11 -
+			// and the second is right, because 8.4.11 is a version somebody ran rather than a
+			// line somebody claimed. A prime which declares less than it measured warns about
+			// its own test server, which is how this was found.
 			if ( Array.isArray( expected.MeasuredTo ) && expected.MeasuredTo.length
 				&& ( compare_versions( Info.VersionParts, expected.MeasuredTo ) > 0 ) )
 			{
