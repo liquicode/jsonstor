@@ -88,6 +88,140 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
+	// A caller's text as a SQL string literal, escaped the way this dialect escapes its own
+	// quote.
+	//
+	// ***Extracted so the two places which put a caller's text into a statement
+	// unparameterized cannot drift apart*** - the 's' case in render(), and the payload
+	// containment operand below.
+	//
+	// Both spellings use split/join because String.replace with a string pattern replaces only
+	// the ***first*** occurrence. A value holding two quotes closed its literal early and MySQL
+	// answered ER_PARSE_ERROR; a value holding a backslash was worse, because "a\b" is an
+	// 'a' and a backspace to MySQL, so the statement ran and matched the wrong rows.
+	function quote_text_literal( Text, Options )
+	{
+		let text = Text;
+		if ( Options.StringLiteralEscape === 'backslash' )
+		{
+			// ***The escape character goes first.*** Escaping the quotes first would double the
+			// backslashes that escaping introduced.
+			text = text.split( '\\' ).join( '\\\\' );
+			text = text.split( Options.StringLiteralQuotes ).join( '\\' + Options.StringLiteralQuotes );
+		}
+		else
+		{
+			// Standard SQL, and what SQLite and Postgres read. A backslash is an ordinary
+			// character here, and doubling it would store two.
+			text = text.split( Options.StringLiteralQuotes ).join( Options.StringLiteralQuotes + Options.StringLiteralQuotes );
+		}
+		return `${Options.StringLiteralQuotes}${text}${Options.StringLiteralQuotes}`;
+	}
+
+
+	//---------------------------------------------------------------------
+	// A condition on a field which has no column of its own, answered out of the payload.
+	//
+	// ***This is the only place the clause reaches a field the catalog does not know about.***
+	// Everywhere else a field with no column drops out and jsongin decides the row. An engine
+	// which can index into the stored document can do better - but only for the shapes where
+	// containment and a criteria have been measured to agree, and that list is short.
+	//
+	// ***What is rendered:*** a scalar equality, at any dotted path, as jsonb containment. Every
+	// case below was run against a live server and against jsongin, on PostgreSql 10.21 and
+	// 16.15; the table is in jsonx/.plans/story.md.
+	//
+	// ***What is not, and what each one would cost:***
+	//
+	// - ***A null operand.*** { a: null } matches a document with no `a` at all, and containment
+	//   asks for a member which is present and null. The missing-field half is lost.
+	// - ***A numeric path segment.*** { 'tags.0': 'a' } indexes an array in a criteria and names
+	//   an object key in JSON, so the operand asks about a document nobody wrote.
+	// - ***Any range operator.*** jsonb orders its types Object > Array > Boolean > Number >
+	//   String > Null and BSON does not - measured, `number < string` is false in jsonb - so a
+	//   comparison spanning two types can disagree in the direction which loses rows.
+	// - ***An array operand.*** It agrees today, and is left out because that criteria form means
+	//   both "equals this array" and "contains this member" and only one of those was measured.
+	//   It costs a broadening, which is free.
+	//
+	// ***The operand is asked twice on purpose.*** A criteria matches inside an array -
+	// { tags: 'a' } matches { tags: [ 'a', 'b' ] } - and containment does not: it wants the
+	// member to be the scalar, or to be an array holding it. Asking for both covers it, and
+	// ***the pair still uses a GIN index***, which was the point of rendering anything at all.
+	//
+	// ***And a NULL payload is admitted rather than excluded.*** Such a row answers UNKNOWN to
+	// every containment, which would drop it, and a foreign table can hold one. This is
+	// broaden_projection's instinct one layer out: the row travels and jsongin decides it.
+	//
+	// ***That disjunct is not free, and it is why PayloadNotNull exists.*** A GIN index cannot
+	// answer IS NULL, so an OR containing one takes the whole clause off the index and back to a
+	// sequential scan - measured on 60,000 rows: the containment pair alone is a Bitmap Index
+	// Scan, and the same pair OR IS NULL is a Seq Scan. So the disjunct is emitted only when the
+	// payload column is actually nullable. A storage whose payload column is NOT NULL renders the
+	// indexable pair; one which cannot promise that renders the safe clause and scans, which is
+	// still a correct answer and still no worse than not rendering at all.
+	function get_payload_containment( FieldName, Value, Options )
+	{
+		if ( Options.PayloadContainment !== 'jsonb' ) { return null; }
+		if ( !Options.PayloadColumn ) { return null; }
+		if ( !FieldName ) { return null; }
+
+		// { a: 5 } and { a: { $eq: 5 } } are the same predicate and both arrive here.
+		let value = Value;
+		if ( is_operator_object( value ) )
+		{
+			let keys = Object.keys( value );
+			if ( keys.length !== 1 ) { return null; }
+			if ( keys[ 0 ] !== '$eq' ) { return null; }
+			value = value.$eq;
+		}
+		if ( !'bns'.includes( jsongin.ShortType( value ) ) ) { return null; }
+
+		let parts = FieldName.split( '.' );
+		for ( let index = 0; index < parts.length; index++ )
+		{
+			if ( !parts[ index ] ) { return null; }
+			if ( /^[0-9]+$/.test( parts[ index ] ) ) { return null; }
+		}
+
+		// ***A field which has a column is never asked of the payload, even when the clause is
+		// not allowed to filter on that column.***
+		//
+		// The two reasons a field reaches this function are not the same. A field with no column
+		// anywhere is in the payload, because the payload is the only place it could be. A field
+		// which ***has*** a column and was left out of AllowedFields - because the adapter does
+		// not know how this engine compares its type - may hold its value in that column and
+		// nowhere else, and the payload will not have it.
+		//
+		// ***Measured, and it lost a row.*** A table with a UUID column and a payload which did
+		// not repeat it: a criteria on that field matched under the old clause and returned
+		// nothing under the containment one, because the payload had no such member. The row is
+		// real, jsongin matches it from the merged document, and the statement never let it
+		// travel.
+		if ( Options.ColumnFields && ( Options.ColumnFields.indexOf( parts[ 0 ] ) >= 0 ) ) { return null; }
+
+		let column = `${Options.IdentifierQuotes}${Options.PayloadColumn}${Options.IdentifierQuotes}`;
+
+		function operand( Leaf )
+		{
+			let built = Leaf;
+			for ( let index = parts.length - 1; index >= 0; index-- )
+			{
+				let step = {};
+				step[ parts[ index ] ] = built;
+				built = step;
+			}
+			return quote_text_literal( JSON.stringify( built ), Options ) + '::jsonb';
+		}
+
+		let clause = `((${column}::jsonb @> ${operand( value )})`
+			+ ` OR (${column}::jsonb @> ${operand( [ value ] )})`;
+		if ( !Options.PayloadNotNull ) { clause += ` OR (${column} IS NULL)`; }
+		return clause + ')';
+	}
+
+
+	//---------------------------------------------------------------------
 	// ***The target-agnostic half, which lives in jsonstor rather than here.***
 	//
 	// These ask about the shape of a criteria and about the field allowlist, and mention no
@@ -366,6 +500,23 @@ module.exports = function ( jsonstor )
 		// of the one above: four adapters and their assertions already name that flag, and an
 		// enum would have changed all of them to record a difference in one engine.
 		if ( typeof options.NegateWithCaseExpression === 'undefined' ) { options.NegateWithCaseExpression = false; }
+		// ***Whether the engine can answer a condition on a field with no column of its own***, by
+		// looking inside the payload column, and how it spells it. '' is off and is the default,
+		// so a dialect which says nothing renders nothing and behaves exactly as it did.
+		// 'jsonb' is PostgreSql's spelling. See get_payload_containment.
+		if ( typeof options.PayloadContainment === 'undefined' ) { options.PayloadContainment = ''; }
+		// The column holding the whole document, unquoted, as the adapter's catalog names it.
+		// Meaningless without PayloadContainment, and the pair is supplied together.
+		if ( typeof options.PayloadColumn === 'undefined' ) { options.PayloadColumn = ''; }
+		// ***Whether that column is declared NOT NULL***, which decides whether the clause has to
+		// carry an IS NULL disjunct to stay safe. False is the safe default. See
+		// get_payload_containment for what the disjunct costs.
+		if ( typeof options.PayloadNotNull === 'undefined' ) { options.PayloadNotNull = false; }
+		// ***Every field which has a column of its own***, allowed or not, as an array of names.
+		// The payload is asked only about fields which are not in this list. Empty is the safe
+		// default only for a table with no columns; an adapter declaring PayloadContainment
+		// supplies it. See get_payload_containment.
+		if ( typeof options.ColumnFields === 'undefined' ) { options.ColumnFields = []; }
 		// Whether $mod renders. Neither MOD() nor TRUNCATE() is universal, and the truncation
 		// is load bearing rather than cosmetic - see the $mod case.
 		if ( typeof options.RendersModulo === 'undefined' ) { options.RendersModulo = false; }
@@ -476,21 +627,7 @@ module.exports = function ( jsonstor )
 					// its literal early and MySQL answered ER_PARSE_ERROR; a value holding a
 					// backslash was worse, because "a\b" is an 'a' and a backspace to MySQL and
 					// the statement ran and matched the wrong rows.
-					let text = Criteria;
-					if ( options.StringLiteralEscape === 'backslash' )
-					{
-						// ***The escape character goes first.*** Escaping the quotes first would
-						// double the backslashes that escaping introduced.
-						text = text.split( '\\' ).join( '\\\\' );
-						text = text.split( options.StringLiteralQuotes ).join( '\\' + options.StringLiteralQuotes );
-					}
-					else
-					{
-						// Standard SQL, and what SQLite and Postgres read. A backslash is an
-						// ordinary character here, and doubling it would store two.
-						text = text.split( options.StringLiteralQuotes ).join( options.StringLiteralQuotes + options.StringLiteralQuotes );
-					}
-					return `${options.StringLiteralQuotes}${text}${options.StringLiteralQuotes}`;
+					return quote_text_literal( Criteria, options );
 				}
 				break;
 			case 'l':
@@ -847,7 +984,17 @@ module.exports = function ( jsonstor )
 							let child_options = Object.assign( {}, options );
 							if ( options && options.AllowedFields )
 							{
-								if ( typeof options.AllowedFields[ key ] === 'undefined' ) { continue; }
+								if ( typeof options.AllowedFields[ key ] === 'undefined' )
+								{
+									// ***A field with no column gets one more chance before it
+									// drops.*** A dialect which can index into the stored document
+									// answers some of these out of the payload; every other
+									// dialect, and every shape which was not measured to agree,
+									// returns null here and the condition broadens as before.
+									let containment = get_payload_containment( key, value, options );
+									if ( containment ) { expressions.push( containment ); }
+									continue;
+								}
 							}
 							child_options.FieldName = key;
 

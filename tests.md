@@ -12,16 +12,16 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | Suite                                                                                           | Passing | Failing |  Duration |
 |-------------------------------------------------------------------------------------------------|--------:|--------:|----------:|
 | 001) Adapter Registry Tests A package carrying a single adapter                                 |       3 |       0 |       0ms |
-| 001) Adapter Registry Tests A package carrying a family of adapters                             |       5 |       0 |       0ms |
-| 001) Adapter Registry Tests A package carrying aliases                                          |      12 |       0 |       1ms |
-| 002) Dialect Boundary Tests The registry knows a family                                         |       2 |       0 |       0ms |
-| 002) Dialect Boundary Tests A server inside its prime range                                     |       3 |       0 |       0ms |
-| 002) Dialect Boundary Tests A server which crossed a boundary                                   |       4 |       0 |       0ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters                             |       5 |       0 |       1ms |
+| 001) Adapter Registry Tests A package carrying aliases                                          |      12 |       0 |       2ms |
+| 002) Dialect Boundary Tests The registry knows a family                                         |       2 |       0 |      29ms |
+| 002) Dialect Boundary Tests A server inside its prime range                                     |       3 |       0 |       1ms |
+| 002) Dialect Boundary Tests A server which crossed a boundary                                   |       4 |       0 |       1ms |
 | 002) Dialect Boundary Tests A server newer than the dialect in force                            |       3 |       0 |       1ms |
 | 002) Dialect Boundary Tests A server past everything measured                                   |       3 |       0 |       0ms |
-| 002) Dialect Boundary Tests Nothing to check                                                    |       2 |       0 |       0ms |
+| 002) Dialect Boundary Tests Nothing to check                                                    |       2 |       0 |       1ms |
 | 003) Dialect Profile Tests Every profile in the run is one this file records                    |       2 |       0 |       0ms |
-| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mysql-v5.7      |       4 |       0 |       0ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mysql-v5.7      |       4 |       0 |       1ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-postgres-v10.21 |       4 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v18.0    |       4 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v23.26   |       4 |       0 |       0ms |
@@ -29,25 +29,28 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-sqlite          |       4 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-duckdb          |       4 |       0 |       0ms |
 | 003) Dialect Profile Tests What a version boundary changes                                      |       4 |       0 |       0ms |
-| 004) Unreachable Storage Tests A storage pointed at something which cannot answer               |       6 |       0 |     104ms |
-| 010) SqlExpression Tests                                                                        |      46 |       0 |       3ms |
-| 011) SqlExpression Coverage Tests                                                               |       9 |       0 |       3ms |
+| 004) Unreachable Storage Tests A storage pointed at something which cannot answer               |       6 |       0 |     369ms |
+| 005) Payload Containment Tests A shape which was measured to agree is rendered                  |       8 |       0 |       1ms |
+| 005) Payload Containment Tests A shape which was measured to lose a row is never rendered       |       9 |       0 |       0ms |
+| 005) Payload Containment Tests The dialect decides whether any of this happens at all           |       6 |       0 |       0ms |
+| 010) SqlExpression Tests                                                                        |      46 |       0 |       5ms |
+| 011) SqlExpression Coverage Tests                                                               |       9 |       0 |       1ms |
 | 012) MangoExpression Tests Registration                                                         |       3 |       0 |       0ms |
-| 012) MangoExpression Tests Absorption                                                           |       8 |       0 |       3ms |
+| 012) MangoExpression Tests Absorption                                                           |       8 |       0 |       1ms |
 | 012) MangoExpression Tests Pruning                                                              |       9 |       0 |       0ms |
 | 012) MangoExpression Tests Narrowing the vocabulary                                             |       4 |       0 |       0ms |
-| 012) MangoExpression Tests The invariant                                                        |       3 |       0 |      80ms |
-| 020) OpLog Filter Tests                                                                         |       4 |       0 |       3ms |
-| **total**                                                                                       | **163** |   **0** | **198ms** |
+| 012) MangoExpression Tests The invariant                                                        |       3 |       0 |     104ms |
+| 020) OpLog Filter Tests                                                                         |       4 |       0 |      20ms |
+| **total**                                                                                       | **186** |   **0** | **538ms** |
 
 ## Engine Tests
 
-| Engine            |            A |           B |           C |           D |          E |          F |           M |            N |          Z |             Total |
-|-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (34ms) |  27/0 (4ms) |   7/0 (6ms) |  14/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) |  26/0 (2ms) |   39/0 (6ms) |  2/0 (1ms) |  **134/0** (56ms) |
-| jsonstor-jsonfile | 10/0 (2.73s) |  27/0 (0ms) | 7/0 (446ms) |  14/0 (7ms) |  6/0 (4ms) |  3/0 (0ms) |  26/0 (2ms) |  39/0 (12ms) | 2/0 (65ms) | **134/0** (3.27s) |
-| jsonstor-folder   | 10/0 (3.63s) | 27/0 (38ms) | 7/0 (419ms) | 14/0 (46ms) | 6/0 (40ms) | 3/0 (19ms) | 26/0 (60ms) | 39/0 (180ms) | 2/0 (19ms) | **134/0** (4.45s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **402/0** (7.78s) |
+| Engine            |            A |           B |           C |           D |          E |          F |           M |            N |          Z |              Total |
+|-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|------------:|-------------:|-----------:|-------------------:|
+| jsonstor-memory   |  10/0 (36ms) |  27/0 (3ms) |   7/0 (8ms) |  14/0 (4ms) |  6/0 (3ms) |  3/0 (1ms) | 26/0 (16ms) |   39/0 (8ms) |  2/0 (1ms) |   **134/0** (80ms) |
+| jsonstor-jsonfile | 10/0 (2.88s) |  27/0 (1ms) | 7/0 (513ms) |  14/0 (8ms) |  6/0 (5ms) |  3/0 (1ms) |  26/0 (0ms) |  39/0 (21ms) | 2/0 (62ms) |  **134/0** (3.49s) |
+| jsonstor-folder   | 10/0 (5.29s) | 27/0 (33ms) | 7/0 (1.17s) | 14/0 (59ms) | 6/0 (57ms) | 3/0 (19ms) | 26/0 (58ms) | 39/0 (267ms) | 2/0 (26ms) |  **134/0** (6.98s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |    **78/0** |    **117/0** |    **6/0** | **402/0** (10.55s) |
 
 Each cell is ***passing/failing (duration)***.
 
