@@ -144,14 +144,59 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
+	// ***The comparisons which turn on a missing field only when their operand says null.***
+	//
+	// ***A fidelity is a property of the operator and its operand, and this file read the name
+	// alone.*** OperatorMatrix's header has said the other thing since it was written - a cell
+	// is a ceiling and the renderer reports the fidelity actually achieved, which depends on
+	// the operand - and nothing here asked about an operand except $eq.
+	//
+	// ***The cost of reading the name alone is an operator dropped for every operand because
+	// one shape of operand narrows.*** Measured against CouchDB 2.3.1 and 3.5.2 on 2026-09-03,
+	// both servers agreeing on every cell: an operand of null makes $gte and $lte come back
+	// short by the documents which have no such field, exactly as $ne does - and the same four
+	// comparisons against a number, a string or a boolean lose nothing at all. So the adapter
+	// which found this had dropped four comparisons and $in to buy the null case.
+	const RANGE_OPERATORS = { '$gt': true, '$gte': true, '$lt': true, '$lte': true };
+
+
+	//---------------------------------------------------------------------
+	// Whether this operand asks about null at all.
+	//
+	// $in takes a list and one null member is enough: measured, an $in holding null loses the
+	// documents which lack the field, and an $in of two numbers loses nothing.
+	function operand_asks_about_null( Name, Operand )
+	{
+		if ( Name === '$in' )
+		{
+			if ( jsongin.ShortType( Operand ) !== 'a' ) { return false; }
+			for ( let index = 0; index < Operand.length; index++ )
+			{
+				if ( Operand[ index ] === null ) { return true; }
+			}
+			return false;
+		}
+		return ( Operand === null );
+	}
+
+
+	//---------------------------------------------------------------------
 	// Whether this one condition has to carry an explicit absence test to mean what the
 	// criteria means. Always false unless the adapter said its target needs it, so a target
 	// which answers negations the way jsongin does is rendered exactly as it was before.
 	function condition_needs_absence_test( Name, Operand, options )
 	{
-		if ( options.NegationExcludesMissingFields !== true ) { return false; }
+		if ( options.ExcludesMissingFields !== true ) { return false; }
+		// A negation is one whatever it is given, so its name settles it.
 		if ( NEGATION_OPERATORS[ Name ] === true ) { return true; }
-		if ( ( Name === '$eq' ) && ( Operand === null ) ) { return true; }
+		// ***The rest is asked of the operand rather than of the name.*** An equality, a
+		// comparison or an $in which mentions null is asking about a value a document without
+		// the field also has, so a target which answers only over the documents holding the
+		// field comes back short by exactly those.
+		if ( ( Name === '$eq' ) || ( Name === '$in' ) || ( RANGE_OPERATORS[ Name ] === true ) )
+		{
+			return operand_asks_about_null( Name, Operand );
+		}
 		return false;
 	}
 
@@ -168,16 +213,144 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
-	// ***The repair, and it is measured rather than reasoned.*** A negation which the target
-	// answers only over documents holding the field is asked a second way beside it, and the
-	// pair agrees with jsongin exactly. Measured on CouchDB 2.3.1 and 3.5.2, 2026-09-02, for
-	// $ne, $nin, $not, $eq null and the implicit null form.
+	// ***The second disagreement of the same shape, and it is the commoner one.***
 	//
-	// ***This is the jsonb array repair one layer up*** - ask the operand a second way and the
-	// pushdown survives instead of falling to the residual.
-	function absence_repair( Name, Conditions )
+	// ***MongoDB's query language is built on implicit array element matching and CouchDB's
+	// Mango has none.*** `{ tags: 'B' }` asks jsongin and MongoDB whether `tags` is 'B'
+	// ***or contains it***, and asks CouchDB only the first - so a document whose `tags` is
+	// `[ 'A', 'B', 'C' ]` is dropped. Measured on 2.3.1 and 3.5.2, 2026-09-03.
+	//
+	// ***A criteria cannot say whether a field holds an array***, so this cannot be decided by
+	// the operand the way the absence test is. It is decided by the target alone: a target
+	// which does not match elements needs the element test on every condition which compares.
+	//
+	// ***A comparison reaches an array's elements in jsongin exactly as an equality does***,
+	// and this asked only about $eq until 2026-09-03. Measured on both CouchDB servers: a $lt
+	// against a field holding an array is kept by jsongin and dropped by the server, and the
+	// $elemMatch offered beside it agrees again. ***$in is deliberately absent*** - measured on
+	// the same corpus, CouchDB's own $in reaches an array's elements, so a repair there would
+	// be a widening nothing asked for.
+	function condition_needs_element_test( Name, options )
 	{
-		return { $or: [ one_field( Name, Conditions ), one_field( Name, { $exists: false } ) ] };
+		if ( options.ExcludesArrayElements !== true ) { return false; }
+		return ( ( Name === '$eq' ) || ( RANGE_OPERATORS[ Name ] === true ) );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***How deep a path the element repair is rendered for.***
+	//
+	// ***The branch count doubles per segment*** - two for a plain field, four for one dot,
+	// eight for two - so the repair is rendered while the selector stays small and a deeper
+	// path is left to the residual, which costs a document read and is never wrong. Four
+	// segments is sixteen branches. The limit is not a measurement; it is here so that a path
+	// nobody expected cannot silently become a thousand branch selector.
+	const MAX_ELEMENT_REPAIR_SEGMENTS = 4;
+
+
+	//---------------------------------------------------------------------
+	// ***Whether the element test can be placed on this field at all.***
+	function field_allows_element_test( FieldName )
+	{
+		return ( String( FieldName ).split( '.' ).length <= MAX_ELEMENT_REPAIR_SEGMENTS );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***Every place an array can sit along a path, one branch each.***
+	//
+	// `$elemMatch` asks the conditions of each element of ***one*** field, and a dotted path
+	// does not say which of its segments holds the array - so the repair asks about each of
+	// them in turn. A path matches when the whole path compares, when its ***leaf*** holds an
+	// array carrying the value, or when a ***prefix*** holds an array whose elements match the
+	// rest of the path, which is the same question one segment shorter.
+	//
+	// ***The obvious repair is one of the wrong ones, which is why this was measured.*** A
+	// disjunct per split of the path - what this file proposed while it was refusing dotted
+	// paths outright - repairs an array at a prefix and misses one at the leaf. Measured on
+	// CouchDB 2.3.1 and 3.5.2, 2026-09-03, over a corpus holding an array at every position
+	// along a two segment and a three segment path: the plain rendering loses four documents of
+	// five, the per-split rendering still loses two, and ***the whole set is exact*** for an
+	// equality and never narrows for a comparison. Both servers agreed.
+	//
+	// The returned branches do not include the plain path itself; widened_repair carries that.
+	function element_branches( FieldName, Conditions )
+	{
+		let segments = String( FieldName ).split( '.' );
+		// The leaf itself may hold the array, whatever else the path does.
+		let branches = [ one_field( FieldName, { $elemMatch: Conditions } ) ];
+		for ( let index = 1; index < segments.length; index++ )
+		{
+			let head = segments.slice( 0, index ).join( '.' );
+			let tail = segments.slice( index ).join( '.' );
+			// ***Relative to the element***, so the rest of the path is asked without its head -
+			// and an adapter mapping field names never reaches inside an operator's operand.
+			let rest = [ one_field( tail, Conditions ) ].concat( element_branches( tail, Conditions ) );
+			for ( let r = 0; r < rest.length; r++ )
+			{
+				branches.push( one_field( head, { $elemMatch: rest[ r ] } ) );
+			}
+		}
+		return branches;
+	}
+
+
+	//---------------------------------------------------------------------
+	// Whether any condition in this field's operator object needs the element test.
+	//
+	// ***Asked of the object rather than of $eq***, because the comparisons need the test too
+	// and a field carrying a $lt on a dotted path is the same unrepairable shape as one
+	// carrying an $eq.
+	function operator_object_needs_element_test( Operators, options )
+	{
+		for ( let key in Operators )
+		{
+			if ( condition_needs_element_test( key, options ) ) { return true; }
+		}
+		return false;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***One widening, carrying whichever second questions this condition needs.***
+	//
+	// ***Both repairs are the same move*** - ask the operand a second way beside the first, so
+	// that the pushdown survives instead of falling to the residual - and a condition can need
+	// both at once, which is why they are assembled here rather than in two places.
+	//
+	// Measured on CouchDB 2.3.1 and 3.5.2:
+	//   absence   $ne, $nin, $not, $eq null and the implicit null form, 2026-09-02
+	//   element   $eq and the implicit form against an array field, 2026-09-03
+	//
+	// ***This is the jsonb array repair one layer up***, which is where the shape came from.
+	function widened_repair( Name, Conditions, NeedsAbsence, NeedsElement )
+	{
+		let branches = [ one_field( Name, Conditions ) ];
+		if ( NeedsAbsence ) { branches.push( one_field( Name, { $exists: false } ) ); }
+		// $elemMatch asks the same conditions of each element, which is exactly the question
+		// MongoDB answers implicitly and this target does not. One branch for a plain field, and
+		// one per place an array can sit when the field is a path.
+		if ( NeedsElement ) { branches = branches.concat( element_branches( Name, Conditions ) ); }
+		return { $or: branches };
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The implicit form written out.*** `{ n: 5 }` becomes `{ n: { $eq: 5 } }`.
+	//
+	// ***Only safe for an operand which is not a regular expression.*** MongoDB's implicit
+	// form differs from $eq in exactly two places, and one of them is that a regexp value
+	// pattern matches rather than compares - so rewriting one would change its meaning. The
+	// other is that a document of operators is read as operators, which is decided before this
+	// is reached.
+	//
+	// ***Rewriting is what makes the element repair expressible at all***, because $elemMatch
+	// takes a conditions object and a bare value is not one. It is also an improvement on its
+	// own: measured 2026-09-03, `{ o: { n: 3.14 } }` reaches CouchDB as a sub-selector and
+	// broadens, while `{ o: { $eq: { n: 3.14 } } }` is exact on both servers.
+	function explicit_equality( Value )
+	{
+		return { $eq: Value };
 	}
 
 
@@ -198,7 +371,11 @@ module.exports = function ( jsonstor )
 
 		// ***Declared by the adapter, about its target, and false everywhere it is not.***
 		// MongoDB renders exactly as it did before this option existed.
-		if ( options.NegationExcludesMissingFields !== true ) { options.NegationExcludesMissingFields = false; }
+		if ( options.ExcludesMissingFields !== true ) { options.ExcludesMissingFields = false; }
+
+		// ***The same, for a target with no implicit array element matching.*** Off means the
+		// target answers an equality the way MongoDB does, which is what MongoDB does.
+		if ( options.ExcludesArrayElements !== true ) { options.ExcludesArrayElements = false; }
 
 		let fidelities = {};
 		for ( let name in FIDELITIES )
@@ -215,6 +392,48 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
+	// ***A regular expression operand asks the $regex question, whatever operator it is written
+	// under.***
+	//
+	// `{ tags: { $in: [ /^be/, /^st/ ] } }` is MongoDB's own spelling, and it is a pattern match
+	// rather than a comparison - so a target which cannot answer `$regex` cannot answer this
+	// either. Rendering it sends a selector comparing against a serialized object, which matches
+	// nothing: ***a narrowing, and the one direction the invariant forbids.***
+	//
+	// ***Found by the shared inventory on 2026-09-03***, the day `$in` began to render at all.
+	// MongoDB's own `$in` reference example lost both its documents against CouchDB, and no
+	// hand-built corpus had thought to put a regexp inside an `$in`.
+	//
+	// ***The rule is read from the fidelity table rather than from a new option***, because an
+	// adapter has already declared what its target does with `$regex`. A third flag would be a
+	// second way of saying something already said.
+	function operand_asks_about_regex( Operand )
+	{
+		let st = jsongin.ShortType( Operand );
+		if ( st === 'r' ) { return true; }
+		if ( st !== 'a' ) { return false; }
+		for ( let index = 0; index < Operand.length; index++ )
+		{
+			if ( jsongin.ShortType( Operand[ index ] ) === 'r' ) { return true; }
+		}
+		return false;
+	}
+
+
+	//---------------------------------------------------------------------
+	// Whether this operand may be handed to the target at all.
+	//
+	// $regex is exempt because it is the operator whose own cell decides the question - asking
+	// it of itself would be circular, and an adapter which renders $regex declares so there.
+	function condition_allows_operand( Name, Operand, options )
+	{
+		if ( Name === '$regex' ) { return true; }
+		if ( !operand_asks_about_regex( Operand ) ) { return true; }
+		return operator_is_renderable( '$regex', options );
+	}
+
+
+	//---------------------------------------------------------------------
 	// Whether the target decides this operator by itself.
 	//
 	// ***An operator nobody declared is `dropped`***, which is the safe default and is what
@@ -223,6 +442,31 @@ module.exports = function ( jsonstor )
 	function operator_is_exact( Name, options )
 	{
 		return ( options.Fidelities[ Name ] === 'exact' );
+	}
+
+
+	//---------------------------------------------------------------------
+	// Whether the target may be handed this operator at all.
+	//
+	// ***`broadening` was declared and never rendered.*** `OperatorMatrix` has carried the
+	// three fidelities since it was written - exact, broadening, dropped - and `SqlExpression`
+	// renders broadening as its ordinary case. This file gated every rendering on `exact`, so
+	// a broadening operator behaved exactly like a dropped one and the middle fidelity did
+	// nothing. Found 2026-09-02 by the first adapter which needed it.
+	//
+	// ***The distinction it buys is the whole two stage bargain.*** A broadening operator
+	// narrows the search and `jsongin` decides the answer, which is what every SQL adapter in
+	// this family already does. Without it a target which merely disagrees about type
+	// coercion - CouchDB compares a number against a string, jsongin refuses to - has to drop
+	// the operator entirely and send the collection.
+	//
+	// ***It is only ever asked at an AND position.*** Whole-or-nothing positions - inside an
+	// $or, a negation, an $elemMatch - still demand `exact`, because a broadening under a
+	// negation comes back out as a narrowing. That is `subtree_is_exact`, unchanged.
+	function operator_is_renderable( Name, options )
+	{
+		let fidelity = options.Fidelities[ Name ];
+		return ( ( fidelity === 'exact' ) || ( fidelity === 'broadening' ) );
 	}
 
 
@@ -262,9 +506,52 @@ module.exports = function ( jsonstor )
 			if ( key.startsWith( '$' ) )
 			{
 				if ( !operator_is_exact( key, options ) ) { return false; }
+				// A regexp operand is the $regex question wearing another operator's name.
+				if ( !condition_allows_operand( key, Node[ key ], options ) ) { return false; }
 				// ***Exact only where it can be repaired.*** Left where it cannot, this operator
-				// would be copied verbatim and would lose the documents which lack the field.
+				// would be copied verbatim and would lose the documents which lack the field,
+				// or the documents whose field holds the value inside an array.
 				if ( condition_needs_absence_test( key, Node[ key ], options ) && ( AllowRepair !== true ) ) { return false; }
+				if ( condition_needs_element_test( key, options ) && ( AllowRepair !== true ) ) { return false; }
+			}
+			else if ( SUPPORT.IsOperatorObject( Node[ key ] )
+				&& !field_allows_element_test( key )
+				&& operator_object_needs_element_test( Node[ key ], options ) )
+			{
+				// ***The explicit form of the same thing, one level down.*** The field name is
+				// this key and the condition sits inside its operator object, so the check has
+				// to happen here - the recursion below sees `$eq` or `$lt` without ever seeing
+				// the path it belongs to, and a path too deep to repair is where the repair has
+				// nowhere to go.
+				return false;
+			}
+			else if ( !SUPPORT.IsOperatorObject( Node[ key ] ) )
+			{
+				// ***A field carrying a plain value is an implicit equality, and nothing here
+				// used to ask the table about it.*** push_conjunction did, so the condition was
+				// left out of the pushdown - and this function said the criteria was absorbed
+				// anyway. An adapter which lowers $ImplicitEq therefore got an empty pushdown
+				// with a null residual: ***every document, reported as an exact answer.***
+				// Found 2026-09-02 by the first adapter to lower it.
+				if ( !operator_is_exact( '$ImplicitEq', options ) ) { return false; }
+				// The implicit form of a regexp is the $regex question, wherever it is written.
+				if ( !condition_allows_operand( '$ImplicitEq', Node[ key ], options ) ) { return false; }
+				// ***The implicit equality needs the element test wherever an equality does***,
+				// and a regexp operand is not an equality at all - neither can be rendered
+				// where the repair does not fit.
+				if ( condition_needs_element_test( '$eq', options ) )
+				{
+					if ( AllowRepair !== true ) { return false; }
+					if ( jsongin.ShortType( Node[ key ] ) === 'r' ) { return false; }
+					if ( !field_allows_element_test( key ) ) { return false; }
+				}
+				// ***And the implicit form of an equality against null needs the same absence
+				// test the explicit one gets.*** `{ n: null }` at an AND position is repaired
+				// by push_conjunction; inside an $or or a negation there is nowhere to put the
+				// repair, so the node cannot be called exact. Left exact, `{ $or: [ { n: null } ] }`
+				// went to the target verbatim and lost every document with no `n` at all -
+				// ***a narrowing, which is the one direction the invariant forbids.***
+				if ( condition_needs_absence_test( '$eq', Node[ key ], options ) && ( AllowRepair !== true ) ) { return false; }
 			}
 			// $and holds an AND position for its children; every other operator's operand is
 			// handed over whole, so a repair cannot be placed inside it.
@@ -331,23 +618,46 @@ module.exports = function ( jsonstor )
 			// must equal, which is the implicit form and has nothing to prune.
 			if ( SUPPORT.IsOperatorObject( value ) )
 			{
-				let split = push_field_conditions( value, options );
+				let split = push_field_conditions( key, value, options );
 				if ( Object.keys( split.Conditions ).length ) { pushdown[ key ] = split.Conditions; }
-				// ***The conditions needing an absence test travel separately***, so a field
-				// carrying both `$gt: 1` and `$ne: 5` keeps the first as an ordinary condition
-				// and widens only the second.
-				if ( Object.keys( split.AbsenceConditions ).length )
+				// ***The conditions needing a widening travel separately***, one $or per kind
+				// of widening they need.
+				for ( let signature in split.Widened )
 				{
-					repairs.push( absence_repair( key, split.AbsenceConditions ) );
+					let group = split.Widened[ signature ];
+					repairs.push( widened_repair( key, group.Conditions, group.Absence, group.Element ) );
 				}
 				continue;
 			}
 
-			if ( !operator_is_exact( '$ImplicitEq', options ) ) { continue; }
-			// The implicit form of the same thing: `{ n: null }` reads as an equality.
-			if ( condition_needs_absence_test( '$eq', value, options ) )
+			// ***An AND position, so a broadening rendering is safe here.*** The condition
+			// narrows the search and the residual - which is not null, because the criteria
+			// holds an operator which is not exact - decides the answer.
+			if ( !operator_is_renderable( '$ImplicitEq', options ) ) { continue; }
+			// ***And an implicit regexp is the $regex question too.*** `{ s: /^a/ }` is a pattern
+			// match written without an operator, so it belongs wherever $regex is renderable and
+			// nowhere else.
+			if ( !condition_allows_operand( '$ImplicitEq', value, options ) ) { continue; }
+
+			// The implicit form of the same thing: `{ n: null }` reads as an equality, and
+			// `{ tags: 'B' }` is the equality which has to reach an array's elements.
+			let implicit_absence = condition_needs_absence_test( '$eq', value, options );
+			let implicit_element = condition_needs_element_test( '$eq', options );
+
+			// ***A regexp value pattern is the one implicit operand which is not an
+			// equality***, so it is never rewritten and never repaired. Left out rather than
+			// rendered, because neither repair below would mean what it says.
+			if ( implicit_element && ( jsongin.ShortType( value ) === 'r' ) ) { continue; }
+			// And a path deeper than the repair is rendered for is left to the residual.
+			if ( implicit_element && !field_allows_element_test( key ) ) { continue; }
+
+			if ( implicit_absence || implicit_element )
 			{
-				repairs.push( absence_repair( key, value ) );
+				// Written out, because $elemMatch takes a conditions object and a bare value
+				// is not one - and because the explicit form is the more exact of the two
+				// against an object operand.
+				let conditions = implicit_element ? explicit_equality( value ) : value;
+				repairs.push( widened_repair( key, conditions, implicit_absence, implicit_element ) );
 				continue;
 			}
 			pushdown[ key ] = value;
@@ -372,17 +682,52 @@ module.exports = function ( jsonstor )
 	// ***Returns two objects rather than one.*** Conditions render against the field as they
 	// always have; AbsenceConditions are the ones which need the field's absence offered
 	// beside them, and are empty unless the adapter asked for that.
-	function push_field_conditions( Operators, options )
+	// ***Returns one plain bucket and a bucket per kind of widening.*** A condition can need
+	// the absence test, the element test, or both, and conditions needing the same pair are
+	// rendered under one $or - so a field carrying `$gt: 1` and `$ne: 5` keeps the first as an
+	// ordinary condition and widens only the second.
+	function push_field_conditions( FieldName, Operators, options )
 	{
 		let conditions = {};
-		let absence_conditions = {};
+		// Keyed by which repairs the conditions in it need: 'A', 'E' or 'AE'.
+		let widened = {};
 		for ( let key in Operators )
 		{
 			if ( key === '$options' ) { continue; }
-			if ( !operator_is_exact( key, options ) ) { continue; }
+			// ***A field's operator object is an AND of its conditions***, so a broadening
+			// condition may be rendered beside the others - it narrows the search and never
+			// the answer. The operand is still handed over whole, so its interior must be
+			// exact.
+			if ( !operator_is_renderable( key, options ) ) { continue; }
+			if ( !condition_allows_operand( key, Operators[ key ], options ) ) { continue; }
 			if ( !subtree_is_exact( Operators[ key ], options, false ) ) { continue; }
+
+			let needs_absence = condition_needs_absence_test( key, Operators[ key ], options );
+			let needs_element = condition_needs_element_test( key, options );
+			// A path deeper than the repair is rendered for is left out of the pushdown.
+			if ( needs_element && !field_allows_element_test( FieldName ) ) { continue; }
+
 			let target = conditions;
-			if ( condition_needs_absence_test( key, Operators[ key ], options ) ) { target = absence_conditions; }
+			if ( needs_absence || needs_element )
+			{
+				// ***One widening carrying two comparisons is not the same question as two
+				// widenings.*** `{ dim: { $gt: 15, $lt: 20 } }` matches in jsongin when one element
+				// of an array satisfies each condition and no element satisfies both, and an
+				// $elemMatch carrying the pair demands a single element satisfy both - ***narrower
+				// than what was asked.*** So a condition needing the element test is widened alone,
+				// and only conditions needing the absence test may share a branch, because a
+				// missing field satisfies every one of them at once.
+				//
+				// ***Found by the shared inventory on 2026-09-03***, where it is MongoDB's own
+				// tutorial: *Query an Array with Compound Filter Conditions on the Array Elements*.
+				let signature = needs_element ? `E ${key}` : 'A';
+				if ( typeof widened[ signature ] === 'undefined' )
+				{
+					widened[ signature ] = { Absence: needs_absence, Element: needs_element, Conditions: {} };
+				}
+				target = widened[ signature ].Conditions;
+			}
+
 			target[ key ] = Operators[ key ];
 			// A kept $regex takes its flags with it.
 			if ( ( key === '$regex' ) && ( typeof Operators.$options !== 'undefined' ) )
@@ -390,7 +735,7 @@ module.exports = function ( jsonstor )
 				target.$options = Operators.$options;
 			}
 		}
-		return { Conditions: conditions, AbsenceConditions: absence_conditions };
+		return { Conditions: conditions, Widened: widened };
 	}
 
 
