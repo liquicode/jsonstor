@@ -6,6 +6,18 @@ const LIB_FS = require( 'fs' );
 const jsongin = require( '@liquicode/jsongin' );
 
 
+//---------------------------------------------------------------------
+// ***`BigInt` is not the capability this needs, and testing for it was wrong by
+// three patch releases.*** BigInt literals arrived in Node 10.4.0 and
+// `process.hrtime.bigint` arrived in 10.7.0, so on 10.4 through 10.6 the old guard
+// passed and then called a function which was not there. Measured on 2026-09-02
+// while establishing the family's Node floor: node:10.4 answers
+// `BigInt=function  process.hrtime.bigint=undefined`.
+// ***Test for the function you are about to call, not for a thing which arrived
+// near it.***
+const HAS_HRTIME_BIGINT = ( typeof process.hrtime.bigint === 'function' );
+
+
 module.exports = {
 
 	FilterName: 'jsonstor-oplog',
@@ -57,13 +69,13 @@ module.exports = {
 
 						let timestamp = ( new Date() ).toISOString();
 						let start_time = null;
-						if ( BigInt ) { start_time = process.hrtime.bigint(); }
+						if ( HAS_HRTIME_BIGINT ) { start_time = process.hrtime.bigint(); }
 						else { start_time = process.hrtime(); };
 
 						let results = await Storage[ FunctionName ]( ...ParameterValues );
 
 						let duration = null;
-						if ( BigInt )
+						if ( HAS_HRTIME_BIGINT )
 						{
 							let end_time = process.hrtime.bigint();
 							duration = Number( end_time - start_time ); //ns
@@ -71,7 +83,8 @@ module.exports = {
 						}
 						else 
 						{
-							duration = process.hrtime( start_time ); // ms
+							let elapsed = process.hrtime( start_time ); // [ seconds, nanoseconds ]
+							duration = ( elapsed[ 0 ] * 1e3 ) + ( elapsed[ 1 ] / 1e6 ); // ms
 						};
 
 						let message = '=== ';
