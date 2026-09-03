@@ -11,10 +11,10 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 
 | Suite                                                                                                        | Passing | Failing | Skipped |  Duration |
 |--------------------------------------------------------------------------------------------------------------|--------:|--------:|--------:|----------:|
-| 001) Adapter Registry Tests A package carrying a single adapter                                              |       3 |       0 |       0 |       2ms |
-| 001) Adapter Registry Tests A package carrying a family of adapters                                          |       5 |       0 |       0 |       0ms |
-| 001) Adapter Registry Tests A package carrying aliases                                                       |      12 |       0 |       0 |       2ms |
-| 002) Dialect Boundary Tests The registry knows a family                                                      |       2 |       0 |       0 |       2ms |
+| 001) Adapter Registry Tests A package carrying a single adapter                                              |       3 |       0 |       0 |       1ms |
+| 001) Adapter Registry Tests A package carrying a family of adapters                                          |       5 |       0 |       0 |       1ms |
+| 001) Adapter Registry Tests A package carrying aliases                                                       |      12 |       0 |       0 |       1ms |
+| 002) Dialect Boundary Tests The registry knows a family                                                      |       2 |       0 |       0 |       1ms |
 | 002) Dialect Boundary Tests A server inside its prime range                                                  |       3 |       0 |       0 |       0ms |
 | 002) Dialect Boundary Tests A server which crossed a boundary                                                |       4 |       0 |       0 |       0ms |
 | 002) Dialect Boundary Tests A server newer than the dialect in force                                         |       3 |       0 |       0 |       1ms |
@@ -22,7 +22,7 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 002) Dialect Boundary Tests Nothing to check                                                                 |       2 |       0 |       0 |       0ms |
 | 003) Dialect Profile Tests Every profile in the run is one this file records                                 |       2 |       0 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mysql-v5.7                   |       4 |       0 |       0 |       0ms |
-| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-postgres-v10.21              |       4 |       0 |       0 |       1ms |
+| 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-postgres-v10.21              |       4 |       0 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v18.0                 |       4 |       0 |       0 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-oracle-v23.26                |       3 |       0 |       1 |       0ms |
 | 003) Dialect Profile Tests Each profile renders with what was measured jsonstor-mssql-v14.0                  |       4 |       0 |       0 |       0ms |
@@ -31,9 +31,9 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 003) Dialect Profile Tests Each Mango profile declares what was measured                                     |       1 |       0 |       0 |       0ms |
 | 003) Dialect Profile Tests Each Mango profile declares what was measured jsonstor-mongodb                    |       2 |       0 |       1 |       0ms |
 | 003) Dialect Profile Tests Each Mango profile declares what was measured jsonstor-couchdb-v2.3               |       3 |       0 |       0 |       0ms |
-| 003) Dialect Profile Tests What a version boundary changes                                                   |       4 |       0 |       0 |       2ms |
-| 004) Unreachable Storage Tests A storage pointed at something which cannot answer                            |       9 |       0 |       0 |     344ms |
-| 005) Payload Containment Tests A shape which was measured to agree is rendered                               |       8 |       0 |       0 |       0ms |
+| 003) Dialect Profile Tests What a version boundary changes                                                   |       4 |       0 |       0 |       1ms |
+| 004) Unreachable Storage Tests A storage pointed at something which cannot answer                            |       9 |       0 |       0 |     175ms |
+| 005) Payload Containment Tests A shape which was measured to agree is rendered                               |       8 |       0 |       0 |       2ms |
 | 005) Payload Containment Tests A shape which was measured to lose a row is never rendered                    |       9 |       0 |       0 |       0ms |
 | 005) Payload Containment Tests Nothing outside the measured set is rendered at all                           |       5 |       0 |       0 |       2ms |
 | 005) Payload Containment Tests The dialect decides whether any of this happens at all                        |       6 |       0 |       0 |       1ms |
@@ -46,7 +46,7 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-postgres-v14.24 |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-postgres-v16.15 |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-oracle-v18.0    |       4 |       0 |       0 |       0ms |
-| 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-oracle-v21.3    |       4 |       0 |       0 |       0ms |
+| 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-oracle-v21.3    |       4 |       0 |       0 |       1ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-oracle-v23.26   |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-mssql-v14.0     |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-mssql-v15.0     |       4 |       0 |       0 |       0ms |
@@ -58,29 +58,38 @@ Every test in this family lives in [`@liquicode/jsonstor-docs`](https://github.c
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-valkey-v8.1     |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-couchdb-v2.3    |       4 |       0 |       0 |       0ms |
 | 006) Server Identity Tests Every server-backed engine reports the server it reached jsonstor-couchdb-v3.5    |       4 |       0 |       0 |       0ms |
-| 006) Server Identity Tests Redis and Valkey are told apart                                                   |       8 |       0 |       0 |       4ms |
-| 010) SqlExpression Tests                                                                                     |      46 |       0 |       0 |       5ms |
+| 006) Server Identity Tests Redis and Valkey are told apart                                                   |       8 |       0 |       0 |       7ms |
+| 007) Transport Security Tests The inventory                                                                  |       2 |       0 |       0 |       1ms |
+| 007) Transport Security Tests The inventory jsonstor-mongodb                                                 |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-mysql                                                   |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-postgres                                                |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-oracle                                                  |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-mssql                                                   |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-redis                                                   |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests The inventory jsonstor-couchdb                                                 |       4 |       0 |       0 |       0ms |
+| 007) Transport Security Tests Against a server which requires TLS                                            |       3 |       0 |       0 |      73ms |
+| 010) SqlExpression Tests                                                                                     |      46 |       0 |       0 |       2ms |
 | 011) SqlExpression Coverage Tests                                                                            |       9 |       0 |       0 |       2ms |
 | 012) MangoExpression Tests Registration                                                                      |       3 |       0 |       0 |       0ms |
 | 012) MangoExpression Tests Absorption                                                                        |       8 |       0 |       0 |       1ms |
 | 012) MangoExpression Tests Pruning                                                                           |       9 |       0 |       0 |       0ms |
 | 012) MangoExpression Tests Narrowing the vocabulary                                                          |       4 |       0 |       0 |       0ms |
-| 012) MangoExpression Tests The invariant                                                                     |       3 |       0 |       0 |      80ms |
+| 012) MangoExpression Tests The invariant                                                                     |       3 |       0 |       0 |      85ms |
 | 012) MangoExpression Tests The absence test repair                                                           |       7 |       0 |       0 |       1ms |
 | 012) MangoExpression Tests Rendering a broadening operator                                                   |       5 |       0 |       0 |       1ms |
 | 012) MangoExpression Tests The array element repair                                                          |       8 |       0 |       0 |       1ms |
-| 012) MangoExpression Tests The operand, not the name alone                                                   |       7 |       0 |       0 |       2ms |
-| 020) OpLog Filter Tests                                                                                      |       6 |       0 |       0 |       8ms |
-| **total**                                                                                                    | **315** |   **0** |   **4** | **463ms** |
+| 012) MangoExpression Tests The operand, not the name alone                                                   |       7 |       0 |       0 |       1ms |
+| 020) OpLog Filter Tests                                                                                      |       6 |       0 |       0 |       9ms |
+| **total**                                                                                                    | **348** |   **0** |   **4** | **372ms** |
 
 ## Engine Tests
 
 | Engine            |            A |           B |           C |           D |          E |          F |         G |           M |            N |          Z |             Total |
 |-------------------|-------------:|------------:|------------:|------------:|-----------:|-----------:|----------:|------------:|-------------:|-----------:|------------------:|
-| jsonstor-memory   |  10/0 (32ms) |  27/0 (4ms) |   7/0 (7ms) |  14/0 (2ms) |  6/0 (1ms) |  3/0 (0ms) | 6/0 (0ms) |  26/0 (2ms) |   39/0 (6ms) |  2/0 (0ms) |  **140/0** (54ms) |
-| jsonstor-jsonfile | 10/0 (2.92s) |  27/0 (1ms) | 7/0 (349ms) |  14/0 (6ms) |  6/0 (5ms) |  3/0 (0ms) | 6/0 (0ms) |  26/0 (0ms) |  39/0 (14ms) | 2/0 (48ms) | **140/0** (3.35s) |
-| jsonstor-folder   | 10/0 (3.47s) | 27/0 (20ms) | 7/0 (340ms) | 14/0 (36ms) | 6/0 (33ms) | 3/0 (14ms) | 6/0 (0ms) | 26/0 (50ms) | 39/0 (196ms) | 2/0 (22ms) | **140/0** (4.18s) |
-| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |  **18/0** |    **78/0** |    **117/0** |    **6/0** | **420/0** (7.58s) |
+| jsonstor-memory   |  10/0 (37ms) |  27/0 (4ms) |   7/0 (7ms) |  14/0 (1ms) |  6/0 (1ms) |  3/0 (1ms) | 6/0 (0ms) |  26/0 (1ms) |   39/0 (2ms) |  2/0 (1ms) |  **140/0** (55ms) |
+| jsonstor-jsonfile | 10/0 (2.25s) |  27/0 (1ms) | 7/0 (365ms) |  14/0 (7ms) |  6/0 (8ms) |  3/0 (0ms) | 6/0 (0ms) |  26/0 (1ms) |  39/0 (15ms) | 2/0 (32ms) | **140/0** (2.68s) |
+| jsonstor-folder   | 10/0 (3.44s) | 27/0 (21ms) | 7/0 (352ms) | 14/0 (42ms) | 6/0 (33ms) | 3/0 (16ms) | 6/0 (0ms) | 26/0 (48ms) | 39/0 (174ms) | 2/0 (17ms) | **140/0** (4.14s) |
+| **total**         |     **30/0** |    **81/0** |    **21/0** |    **42/0** |   **18/0** |    **9/0** |  **18/0** |    **78/0** |    **117/0** |    **6/0** | **420/0** (6.87s) |
 
 Each cell is ***passing/failing (duration)***.
 
