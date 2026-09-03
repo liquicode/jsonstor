@@ -131,6 +131,57 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
+	// ***The field level operators whose answer turns on a field the document does not
+	// have.*** Every one of them is true in jsongin for a document with no such field: a
+	// missing field is not equal to 5, so it satisfies $ne.
+	//
+	// ***Not every Mango speaker agrees, and the disagreement loses rows.*** Measured against
+	// CouchDB 2.3.1 and 3.5.2 on 2026-09-02: `{ n: { $ne: 5 } }` returns only the documents
+	// which have an `n`, so a document with none is dropped. MongoDB returns it. The same
+	// cause covers an equality against null, which is why $eq is here by its operand rather
+	// than by its name.
+	const NEGATION_OPERATORS = { '$ne': true, '$nin': true, '$not': true };
+
+
+	//---------------------------------------------------------------------
+	// Whether this one condition has to carry an explicit absence test to mean what the
+	// criteria means. Always false unless the adapter said its target needs it, so a target
+	// which answers negations the way jsongin does is rendered exactly as it was before.
+	function condition_needs_absence_test( Name, Operand, options )
+	{
+		if ( options.NegationExcludesMissingFields !== true ) { return false; }
+		if ( NEGATION_OPERATORS[ Name ] === true ) { return true; }
+		if ( ( Name === '$eq' ) && ( Operand === null ) ) { return true; }
+		return false;
+	}
+
+
+	//---------------------------------------------------------------------
+	// Builds a one field criteria. Written out rather than with a computed key, because the
+	// field name is a variable and the result has to be a plain criteria object.
+	function one_field( Name, Value )
+	{
+		let criteria = {};
+		criteria[ Name ] = Value;
+		return criteria;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The repair, and it is measured rather than reasoned.*** A negation which the target
+	// answers only over documents holding the field is asked a second way beside it, and the
+	// pair agrees with jsongin exactly. Measured on CouchDB 2.3.1 and 3.5.2, 2026-09-02, for
+	// $ne, $nin, $not, $eq null and the implicit null form.
+	//
+	// ***This is the jsonb array repair one layer up*** - ask the operand a second way and the
+	// pushdown survives instead of falling to the residual.
+	function absence_repair( Name, Conditions )
+	{
+		return { $or: [ one_field( Name, Conditions ), one_field( Name, { $exists: false } ) ] };
+	}
+
+
+	//---------------------------------------------------------------------
 	function apply_defaults( Options )
 	{
 		let options = Object.assign( {}, Options );
@@ -144,6 +195,10 @@ module.exports = function ( jsonstor )
 		// absorption nobody measured, and the residual is the one value in this design which
 		// must never be optimistic.
 		if ( typeof options.OperatorFidelities === 'undefined' ) { options.OperatorFidelities = null; }
+
+		// ***Declared by the adapter, about its target, and false everywhere it is not.***
+		// MongoDB renders exactly as it did before this option existed.
+		if ( options.NegationExcludesMissingFields !== true ) { options.NegationExcludesMissingFields = false; }
 
 		let fidelities = {};
 		for ( let name in FIDELITIES )
@@ -180,14 +235,19 @@ module.exports = function ( jsonstor )
 	//
 	// It walks values as well as keys, because an operator's operand can hold a criteria: $or
 	// takes an array of them, $elemMatch takes one, and $not takes an operator object.
-	function subtree_is_exact( Node, options )
+	// ***AllowRepair says whether this position is one the repair can reach.*** A criteria is
+	// an AND of its keys and so is a field's operator object, so both are repairable. Every
+	// other operand - inside $or, $nor, $not, $elemMatch - is copied to the target verbatim,
+	// so a narrowing operator found there makes the whole node inexact and it is dropped.
+	// ***Conservative on purpose***: only the shapes actually measured are repaired.
+	function subtree_is_exact( Node, options, AllowRepair )
 	{
 		let st = jsongin.ShortType( Node );
 		if ( st === 'a' )
 		{
 			for ( let index = 0; index < Node.length; index++ )
 			{
-				if ( !subtree_is_exact( Node[ index ], options ) ) { return false; }
+				if ( !subtree_is_exact( Node[ index ], options, AllowRepair ) ) { return false; }
 			}
 			return true;
 		}
@@ -202,8 +262,15 @@ module.exports = function ( jsonstor )
 			if ( key.startsWith( '$' ) )
 			{
 				if ( !operator_is_exact( key, options ) ) { return false; }
+				// ***Exact only where it can be repaired.*** Left where it cannot, this operator
+				// would be copied verbatim and would lose the documents which lack the field.
+				if ( condition_needs_absence_test( key, Node[ key ], options ) && ( AllowRepair !== true ) ) { return false; }
 			}
-			if ( !subtree_is_exact( Node[ key ], options ) ) { return false; }
+			// $and holds an AND position for its children; every other operator's operand is
+			// handed over whole, so a repair cannot be placed inside it.
+			let child_allows_repair = AllowRepair;
+			if ( key.startsWith( '$' ) && ( key !== '$and' ) ) { child_allows_repair = false; }
+			if ( !subtree_is_exact( Node[ key ], options, child_allows_repair ) ) { return false; }
 		}
 		return true;
 	}
@@ -218,6 +285,7 @@ module.exports = function ( jsonstor )
 	function push_conjunction( Criteria, options )
 	{
 		let pushdown = {};
+		let repairs = [];
 		if ( jsongin.ShortType( Criteria ) !== 'o' ) { return pushdown; }
 
 		for ( let key in Criteria )
@@ -253,7 +321,7 @@ module.exports = function ( jsonstor )
 			if ( key.startsWith( '$' ) )
 			{
 				if ( !operator_is_exact( key, options ) ) { continue; }
-				if ( !subtree_is_exact( value, options ) ) { continue; }
+				if ( !subtree_is_exact( value, options, false ) ) { continue; }
 				pushdown[ key ] = value;
 				continue;
 			}
@@ -263,13 +331,35 @@ module.exports = function ( jsonstor )
 			// must equal, which is the implicit form and has nothing to prune.
 			if ( SUPPORT.IsOperatorObject( value ) )
 			{
-				let conditions = push_field_conditions( value, options );
-				if ( Object.keys( conditions ).length ) { pushdown[ key ] = conditions; }
+				let split = push_field_conditions( value, options );
+				if ( Object.keys( split.Conditions ).length ) { pushdown[ key ] = split.Conditions; }
+				// ***The conditions needing an absence test travel separately***, so a field
+				// carrying both `$gt: 1` and `$ne: 5` keeps the first as an ordinary condition
+				// and widens only the second.
+				if ( Object.keys( split.AbsenceConditions ).length )
+				{
+					repairs.push( absence_repair( key, split.AbsenceConditions ) );
+				}
 				continue;
 			}
 
 			if ( !operator_is_exact( '$ImplicitEq', options ) ) { continue; }
+			// The implicit form of the same thing: `{ n: null }` reads as an equality.
+			if ( condition_needs_absence_test( '$eq', value, options ) )
+			{
+				repairs.push( absence_repair( key, value ) );
+				continue;
+			}
 			pushdown[ key ] = value;
+		}
+
+		// ***A criteria is an AND of its keys, so the repairs join it as more of them.*** They
+		// go under $and because each one is an $or and a criteria object holds one key of any
+		// given name.
+		if ( repairs.length )
+		{
+			if ( jsongin.ShortType( pushdown.$and ) === 'a' ) { pushdown.$and = pushdown.$and.concat( repairs ); }
+			else { pushdown.$and = repairs; }
 		}
 
 		return pushdown;
@@ -279,22 +369,28 @@ module.exports = function ( jsonstor )
 	//---------------------------------------------------------------------
 	// Prunes the operator object on one field. `{ $gt: 1, $eqx: 2 }` is an AND of two
 	// conditions on that field, so keeping the first and leaving out the second broadens it.
+	// ***Returns two objects rather than one.*** Conditions render against the field as they
+	// always have; AbsenceConditions are the ones which need the field's absence offered
+	// beside them, and are empty unless the adapter asked for that.
 	function push_field_conditions( Operators, options )
 	{
 		let conditions = {};
+		let absence_conditions = {};
 		for ( let key in Operators )
 		{
 			if ( key === '$options' ) { continue; }
 			if ( !operator_is_exact( key, options ) ) { continue; }
-			if ( !subtree_is_exact( Operators[ key ], options ) ) { continue; }
-			conditions[ key ] = Operators[ key ];
+			if ( !subtree_is_exact( Operators[ key ], options, false ) ) { continue; }
+			let target = conditions;
+			if ( condition_needs_absence_test( key, Operators[ key ], options ) ) { target = absence_conditions; }
+			target[ key ] = Operators[ key ];
 			// A kept $regex takes its flags with it.
 			if ( ( key === '$regex' ) && ( typeof Operators.$options !== 'undefined' ) )
 			{
-				conditions.$options = Operators.$options;
+				target.$options = Operators.$options;
 			}
 		}
-		return conditions;
+		return { Conditions: conditions, AbsenceConditions: absence_conditions };
 	}
 
 
@@ -343,7 +439,7 @@ module.exports = function ( jsonstor )
 		// back as `Residual: null` - indistinguishable from the signal that the target settled
 		// it. That the two meanings agree here is not luck to lean on: it is why the type is
 		// decided before the vocabulary is, rather than after.
-		let exact = 'olu'.includes( jsongin.ShortType( criteria ) ) && subtree_is_exact( criteria, options );
+		let exact = 'olu'.includes( jsongin.ShortType( criteria ) ) && subtree_is_exact( criteria, options, true );
 
 		return {
 			Pushdown: push_conjunction( criteria, options ),
