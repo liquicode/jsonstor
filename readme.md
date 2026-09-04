@@ -38,7 +38,7 @@ Even if you need to eventually switch your code over to the native driver, for M
 	straightforward as the `jsonstor` and MongoDB interfaces are almost identical.
 
 As long as there is an adapter for it (or you create one), you can use any existing database.
-You can use the convenient and intuitive MongoDB Query interface to access any kind os data,
+You can use the convenient and intuitive MongoDB Query interface to access any kind of data,
 	regardless of where it lives.
 
 With a single interface to access data, we can develop common tools and plugins.
@@ -52,6 +52,7 @@ Features
 
 - 100% Javascript with minimal dependencies.
 - 100% `async` and `await`-able storage functions.
+- Identical interface to JSON, MongoDB, MySql, and others.
 - Create your own adapters and filters with the extensible plugin architecture.
 
 
@@ -124,11 +125,11 @@ A storage adapter is what actually reads and writes the documents. Every adapter
 
 ***The list is not repeated here.*** It is generated from one inventory, along with a topic page
 	for each adapter describing what that adapter does differently. See
-	[Storage Adapters](/docs/guides/Storage%20Adapters.md).
+	[Storage Adapters](/docs/guides/Storage-Adapters.md).
 
 ***Each external adapter is its own package so that its driver stays optional.*** A project
 	storing documents in memory and a file downloads no database driver at all - installing
-	`@liquicode/jsonstor` brings `jsongin`, `lockfile`, and `uuid` and nothing else.
+	`@liquicode/jsonstor` brings `@liquicode/jsongin` and nothing else.
 
 
 Storage Filters
@@ -145,13 +146,18 @@ Again, this pipeline can be directed to store data with any storage adapter.
 - `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
 - `jsonstor-userinfo` : Adds user ownership and document sharing to an existing storage.
 
-See [Storage Filters](/docs/guides/Storage%20Filters.md).
+See [Storage Filters](/docs/guides/Storage-Filters.md).
 
 
 Documentation and Tests
 ---------------------------------------------------------------------
 
 ***The documentation and the conformance suites for the whole family are built in one place.***
-	[`@liquicode/jsonstor-docs`](https://www.npmjs.com/package/@liquicode/jsonstor-docs) carries the
-	shared storage inventory every adapter is measured by, and generates this site from it.
+	`@liquicode/jsonstor-docs` carries the shared storage inventory every adapter is measured
+	by, and generates this site from it. It is a development repository rather than a library:
+	***it is never published to npm***, and there is nothing to install.
 	See the [Test Results](/docs/external/tests.md) for the most recent run of every adapter.
+
+***One site covers `jsonstor` and every adapter***, at
+	[http://jsonstor.liquicode.com](http://jsonstor.liquicode.com). No adapter has a site of its
+	own; its topic page lives here, describing only what that adapter does differently.
