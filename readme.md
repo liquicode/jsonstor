@@ -7,7 +7,7 @@
 > ### WARNING:
 >
 > This version is built on `jsongin` 0.1.0 and carries its breaking changes.
-> Please review the [Version History](/docs/external/history.md) before replacing and upgrading.
+> Please review the [Version History](http://jsonstor.liquicode.com/#/external/history.md) before replacing and upgrading.
 
 
 <!-- Note: the links below are root-absolute, beginning with /docs/.
@@ -113,8 +113,9 @@ Two things are worth knowing about how the operators reach an adapter:
 	`jsonstor-mongodb` hands criteria straight to the MongoDB driver. A SQL adapter translates
 	what it can and refuses the rest.
 
-`npm run parity-report` measures the difference: it runs one shared inventory against every
-	storage and against a live MongoDB, and reports where any medium disagrees.
+***That difference is measured rather than assumed.*** One shared inventory is run against
+	every storage and against a live MongoDB server, and where a medium disagrees with the
+	server the medium is wrong.
 
 
 Storage Adapters
@@ -125,7 +126,12 @@ A storage adapter is what actually reads and writes the documents. Every adapter
 
 ***The list is not repeated here.*** It is generated from one inventory, along with a topic page
 	for each adapter describing what that adapter does differently. See
-	[Storage Adapters](/docs/guides/Storage-Adapters.md).
+	[Storage Adapters](http://jsonstor.liquicode.com/#/guides/Storage-Adapters.md).
+
+***What every adapter does the same way is written down once.***
+	[Storage Invariants](http://jsonstor.liquicode.com/#/guides/Storage-Invariants.md) is that
+	list - the identifier, the order a collection reads back in, what a search is guaranteed to
+	answer - so a topic page carries only the differences.
 
 ***Each external adapter is its own package so that its driver stays optional.*** A project
 	storing documents in memory and a file downloads no database driver at all - installing
@@ -146,7 +152,7 @@ Again, this pipeline can be directed to store data with any storage adapter.
 - `jsonstor-oplog` : Traces storage function calls and outputs messages to console, file, or other log targets.
 - `jsonstor-userinfo` : Adds user ownership and document sharing to an existing storage.
 
-See [Storage Filters](/docs/guides/Storage-Filters.md).
+See [Storage Filters](http://jsonstor.liquicode.com/#/guides/Storage-Filters.md).
 
 
 Documentation and Tests
@@ -156,7 +162,7 @@ Documentation and Tests
 	`@liquicode/jsonstor-docs` carries the shared storage inventory every adapter is measured
 	by, and generates this site from it. It is a development repository rather than a library:
 	***it is never published to npm***, and there is nothing to install.
-	See the [Test Results](/docs/external/tests.md) for the most recent run of every adapter.
+	See the [Test Results](http://jsonstor.liquicode.com/#/external/tests.md) for the most recent run of every adapter.
 
 ***One site covers `jsonstor` and every adapter***, at
 	[http://jsonstor.liquicode.com](http://jsonstor.liquicode.com). No adapter has a site of its
