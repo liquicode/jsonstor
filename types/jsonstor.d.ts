@@ -50,7 +50,7 @@ declare module '@liquicode/jsonstor'
 	// so an adapter which forgets one fails loudly rather than silently doing nothing.
 	//
 	// An adapter is free to add members of its own, so this is left open. `jsonstor-memory`
-	// carries `store` and `is_dirty`; they are not part of the interface and not declared.
+	// carries `Store` and `IsDirty`; they are not part of the interface and not declared.
 
 	// What a call reports when it is made with `Options.Statistics`.
 	//
@@ -102,6 +102,8 @@ declare module '@liquicode/jsonstor'
 		ReplaceOne( Criteria: QueryCriteria, Document: JsonDocument, Options?: JsonDocument ): Promise<any>;
 		DeleteOne( Criteria: QueryCriteria, Options?: JsonDocument ): Promise<any>;
 		DeleteMany( Criteria?: QueryCriteria, Options?: JsonDocument ): Promise<any>;
+		/** FindMany, with a sort and a maximum applied by the storage. */
+		FindMany2( Criteria?: QueryCriteria, Projection?: JsonDocument, Sort?: JsonDocument, MaxCount?: number, Options?: JsonDocument ): Promise<any>;
 
 		/**
 		 * What this storage is actually talking to: the name asked for, the dialect in force,
@@ -109,6 +111,18 @@ declare module '@liquicode/jsonstor'
 		 * no server - an in-process adapter reports whatever implements it.
 		 */
 		StorageInfo( Options?: JsonDocument ): Promise<StorageInfo>;
+
+		/**
+		 * Rebuilds an index which jsonstor holds, and answers how many entries it filed.
+		 *
+		 * Answers `0` where the database hosts the index and where there is no index at all.
+		 * This is the escape hatch for an adapter pointed at a store something else writes:
+		 * a stale index does not return wrong rows, it loses them silently.
+		 */
+		RefreshIndex( Options?: JsonDocument ): Promise<number>;
+
+		/** What the identity settings resolved to. Read by BuildStorageInfo. */
+		PrimaryKeyInfo?: PrimaryKeyInfo;
 
 		/** The settings this storage was constructed with. */
 		Settings?: JsonDocument;
@@ -153,8 +167,118 @@ declare module '@liquicode/jsonstor'
 		Endpoint: string;
 		/** True when nothing is reached over a socket. */
 		InProcess: boolean;
+		/**
+		 * The field or column which is the document identifier. Empty where there is none.
+		 *
+		 * Always an array, because a composite key is declared even where no adapter honors
+		 * one yet - a caller written against a string would have to be rewritten the day one
+		 * does. The same reasoning as `VersionParts` beside `Version`.
+		 */
+		PrimaryKey: string[];
+		/** The jsongin short type the medium's key column holds. Empty where it holds none. */
+		PrimaryKeyType: string[];
+		/** Whether an update or a replace may change the key. */
+		PrimaryKeyMutable: boolean;
+		/** Whether the store supplies the key value on insert. */
+		PrimaryKeyGenerated: boolean;
+		/**
+		 * `'database'` where the store enforces the key and answers a lookup, `'jsonstor'`
+		 * where this library holds the index, `'none'` where uniqueness costs a scan.
+		 */
+		IndexHostedBy: 'database' | 'jsonstor' | 'none';
 		/** Anything noticed about this storage which is not an error. */
 		Warnings: string[];
+	}
+
+
+	//---------------------------------------------------------------------
+	// What an adapter resolved its identity settings to.
+	//
+	// ***Settings in, resolved fact out.*** The settings a caller passed and the key in force
+	// are different facts wherever the key was discovered rather than declared - a SQL adapter
+	// attached to a foreign table reads its key out of the DDL - and this is the second one.
+
+	export interface PrimaryKeyInfo
+	{
+		/** The field or column names making up the key. */
+		Fields: string[];
+		/** The jsongin short types of the medium's key columns, where the medium has any. */
+		Types: string[];
+		/** Whether an update or a replace may change the key. */
+		Mutable: boolean;
+		/** Whether the store supplies the key value on insert. */
+		Generated: boolean;
+		/** Who holds the index: the database, jsonstor, or nobody. */
+		IndexHostedBy: 'database' | 'jsonstor' | 'none';
+	}
+
+
+	//---------------------------------------------------------------------
+	// What an adapter declared about its key, before the adapter applied its own default.
+	//
+	// ***Resolve reports the declaration and never the default***, because an omitted setting
+	// means different things to different adapters: a SQL adapter discovers its key from the
+	// catalog and a built-in has no catalog to discover from.
+
+	export interface PrimaryKeyDeclaration
+	{
+		Fields: string[];
+		Types: string[];
+		Mutable: boolean;
+		Generated: boolean;
+		HostIndex: boolean;
+	}
+
+
+	//---------------------------------------------------------------------
+	// A Map keyed by the encoded primary key, holding an adapter specific locator.
+
+	export interface PrimaryKeyIndex
+	{
+		/** The entries, keyed by encoded key. The locator is whatever that adapter needs. */
+		Entries: Map<string, any>;
+		/**
+		 * Set once a non-scalar key has been filed, and cleared only by a rebuild.
+		 *
+		 * While it is set the index still enforces uniqueness and refuses to answer a lookup,
+		 * because a scalar equality may match inside an array the index filed under one key.
+		 */
+		HasComplexKey: boolean;
+		Size(): number;
+		Clear(): void;
+		Has( Key: string | null ): boolean;
+		/** The locator, or `undefined` to mean ask the scan. */
+		Lookup( Key: string | null ): any;
+		/** Files an entry. Throws when the key is already there. */
+		Add( Key: string | null, Locator: any, Value?: any ): boolean;
+		/** Replaces an entry which is already there, for an update which kept its key. */
+		Set( Key: string | null, Locator: any ): boolean;
+		Remove( Key: string | null ): boolean;
+	}
+
+
+	//---------------------------------------------------------------------
+	// The shared key encoding and index, as an adapter sees it.
+
+	export interface PrimaryKeyHelper
+	{
+		/** What an adapter with no catalog falls back to: `'_id'`. */
+		DEFAULT_FIELD: string;
+		/** What the medium's key holds unless the medium says otherwise: `'s'`. */
+		DEFAULT_TYPE: string;
+		/** What the Settings declared. `IdField` is the deprecated spelling of `PrimaryKey`. */
+		Resolve( Settings?: JsonDocument ): PrimaryKeyDeclaration;
+		/** The string a key value is filed under. The short type is part of it. */
+		EncodeValue( Value: any ): string;
+		/** Whether a value can be found by an equality against a scalar. */
+		IsScalar( Value: any ): boolean;
+		/** The key value this document carries, or null when it has none. */
+		DocumentValue( Document: JsonDocument, Fields: string[] ): any;
+		/** The encoded key of a document, or null when it has none. */
+		DocumentKey( Document: JsonDocument, Fields: string[] ): string | null;
+		/** The key a criteria asks for, or null when it does not ask for exactly one. */
+		CriteriaKey( Criteria: QueryCriteria, Fields: string[] ): string | null;
+		NewIndex(): PrimaryKeyIndex;
 	}
 
 
@@ -306,8 +430,16 @@ declare module '@liquicode/jsonstor'
 		GetStorage( AdapterName: string, Settings?: JsonDocument | null, Filters?: FilterEntry[] ): Storage;
 		/** Wraps an existing storage in one registered filter. */
 		GetFilter( FilterName: string, Storage: Storage, Settings?: JsonDocument | null ): Storage;
-		/** The twelve interface functions as stubs which throw. What an adapter starts from. */
+		/** The fourteen interface functions as stubs which throw. What an adapter starts from. */
 		StorageInterface(): Storage;
+
+		/**
+		 * The primary key, and the index underneath it.
+		 *
+		 * How an external adapter reaches the shared key encoding and index - they are separate
+		 * packages, so `../jsonstor/PrimaryKey` is not a path any of them has.
+		 */
+		PrimaryKey: PrimaryKeyHelper;
 
 		/** The built-in SQL criteria translator. Also reachable as `Translators.SqlExpression`. */
 		SqlExpression: CriteriaTranslatorPlugin;

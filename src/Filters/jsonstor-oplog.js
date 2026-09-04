@@ -165,6 +165,18 @@ module.exports = {
 		Filter.ReplaceOne = async function ( Criteria, Document, Options ) { return await call_function( 'ReplaceOne', [ 'Criteria', 'Document', 'Options' ], [ Criteria, Document, Options ] ); };
 		Filter.DeleteOne = async function ( Criteria, Options ) { return await call_function( 'DeleteOne', [ 'Criteria', 'Options' ], [ Criteria, Options ] ); };
 		Filter.DeleteMany = async function ( Criteria, Options ) { return await call_function( 'DeleteMany', [ 'Criteria', 'Options' ], [ Criteria, Options ] ); };
+		Filter.FindMany2 = async function ( Criteria, Projection, Sort, MaxCount, Options ) { return await call_function( 'FindMany2', [ 'Criteria', 'Projection', 'Sort', 'MaxCount', 'Options' ], [ Criteria, Projection, Sort, MaxCount, Options ] ); };
+
+		// ***The two which ask about the storage rather than about the documents in it.***
+		//
+		// ***This list had stopped at twelve and nothing was watching.*** StorageInfo was never
+		// forwarded, so a storage with a filter in front of it answered `StorageInfo is not
+		// implemented` - the stub, from the interface, reached because the filter never replaced
+		// it. FindMany2 was not forwarded either and was not even a function. Both were invisible
+		// because no test puts a filter in front of either call. Measured 2026-09-04, while
+		// adding the fourteenth. See jsonx/.plans/primary-keys-and-indexes.md.
+		Filter.StorageInfo = async function ( Options ) { return await call_function( 'StorageInfo', [ 'Options' ], [ Options ] ); };
+		Filter.RefreshIndex = async function ( Options ) { return await call_function( 'RefreshIndex', [ 'Options' ], [ Options ] ); };
 
 
 		//=====================================================================

@@ -47,10 +47,12 @@ module.exports = function ()
 	// instead would guess wrongly the moment a caller omitted an optional one. FindMany2 is
 	// listed here although StorageInterface() does not declare it, because the adapters do.
 	//
-	// ***StorageInfo is deliberately absent.*** It asks about the storage rather than about the
-	// documents in it, so it has no Pushdown and no Residual to collect - and being listed here
-	// would make it accept Options.Statistics and answer `{ Result, Statistics }`, which is not
-	// the shape its caller wants. See jsonx/.plans/versioned-adapters.md.
+	// ***StorageInfo and RefreshIndex are deliberately absent.*** Both ask about the storage
+	// rather than about the documents in it, so neither has a Pushdown or a Residual to collect -
+	// and being listed here would make one accept Options.Statistics and answer
+	// `{ Result, Statistics }`, which is not the shape its caller wants. RefreshIndex answers a
+	// count of entries indexed and that count is not a measurement of a criteria. See
+	// jsonx/.plans/versioned-adapters.md and jsonx/.plans/primary-keys-and-indexes.md.
 	const STORAGE_FUNCTIONS = {
 		DropStorage: 0,
 		FlushStorage: 0,

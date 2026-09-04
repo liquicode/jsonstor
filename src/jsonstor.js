@@ -340,6 +340,18 @@ module.exports = function ( AdapterName, Settings, Filters )
 				// the fact instead of the judgement. Spelled correctly, unlike its twelve
 				// siblings. See jsonx/.plans/versioned-adapters.md.
 				StorageInfo: async function ( Options ) { throw new Error( 'StorageInfo is not implemented.' ); },
+				// ***The fourteenth method, and the second one which asks about the storage
+				// rather than about the documents in it.*** An adapter which holds its own index
+				// has to be told when something else wrote the store it is pointed at, and
+				// jsonstor-folder, -jsonfile and -excel exist precisely to be pointed at such a
+				// store. A stale index does not return wrong rows, ***it loses them silently***,
+				// which is the failure shape this family keeps meeting.
+				//
+				// ***It is a stub rather than a default no-op*** so that an adapter which forgets
+				// it fails loudly instead of quietly doing nothing, which is what this list is
+				// for. An adapter whose database hosts the index answers 0 and means it.
+				// See jsonx/.plans/primary-keys-and-indexes.md.
+				RefreshIndex: async function ( Options ) { throw new Error( 'RefreshIndex is not implemented.' ); },
 			};
 			return storage;
 		},
@@ -357,6 +369,29 @@ module.exports = function ( AdapterName, Settings, Filters )
 		{
 			if ( jsongin.ShortType( Facts ) !== 'o' ) { Facts = {}; }
 			let version = ( jsongin.ShortType( Facts.Version ) === 's' ) ? Facts.Version : '';
+
+			// ***An adapter which has not declared a key still answers this call.*** The empty
+			// shape says there is no primary key here, which is a fact rather than a gap, and it
+			// is what an adapter written before these fields existed honestly has to report.
+			let primary_key_info = {
+				Fields: [],
+				Types: [],
+				Mutable: false,
+				Generated: false,
+				IndexHostedBy: 'none',
+			};
+			if ( jsongin.ShortType( Storage ) === 'o' )
+			{
+				if ( jsongin.ShortType( Storage.PrimaryKeyInfo ) === 'o' )
+				{
+					let declared = Storage.PrimaryKeyInfo;
+					if ( Array.isArray( declared.Fields ) ) { primary_key_info.Fields = declared.Fields; }
+					if ( Array.isArray( declared.Types ) ) { primary_key_info.Types = declared.Types; }
+					primary_key_info.Mutable = ( declared.Mutable === true );
+					primary_key_info.Generated = ( declared.Generated === true );
+					if ( jsongin.ShortType( declared.IndexHostedBy ) === 's' ) { primary_key_info.IndexHostedBy = declared.IndexHostedBy; }
+				}
+			}
 			let info = {
 				// ***Two names, because a caller asks for one and gets the behavior of another.***
 				Requested: Storage.AdapterName || '',
@@ -369,6 +404,23 @@ module.exports = function ( AdapterName, Settings, Filters )
 				// is not talking to anything over a socket.
 				Endpoint: ( jsongin.ShortType( Facts.Endpoint ) === 's' ) ? Facts.Endpoint : '',
 				InProcess: ( Facts.InProcess === true ),
+				// ***What the identity settings turned out to mean.*** Settings in, resolved fact
+				// out - the same shape Requested and Dialect have two lines up, and the only
+				// adapter-agnostic way a caller can ask what the key actually is. That matters
+				// most where it was discovered rather than declared: a SQL adapter attached to a
+				// foreign table reads its key out of the DDL, so the setting a caller passed and
+				// the key in force are different facts and only one of them is here.
+				//
+				// ***Always arrays, because a composite key is declared even where no adapter
+				// honors one yet.*** A caller written against a string would have to be rewritten
+				// the day one does. Same reasoning as VersionParts beside Version.
+				PrimaryKey: primary_key_info.Fields.slice(),
+				PrimaryKeyType: primary_key_info.Types.slice(),
+				PrimaryKeyMutable: primary_key_info.Mutable,
+				PrimaryKeyGenerated: primary_key_info.Generated,
+				// 'database' where the store enforces the key and answers a lookup, 'jsonstor'
+				// where this library holds the index, 'none' where uniqueness costs a scan.
+				IndexHostedBy: primary_key_info.IndexHostedBy,
 				Warnings: Array.isArray( Facts.Warnings ) ? Facts.Warnings.slice() : [],
 			};
 			// ***Assembling the answer is where the boundary is checked***, so every adapter
@@ -510,6 +562,12 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// instance - requiring it from one would be circular - so they require the module
 	// directly and this is the same function under a public name.
 	jsonstor.NewUniqueID = require( './jsonstor/NewUniqueID' );
+
+	// ***The primary key, and the index underneath it.*** The built-in adapters require the
+	// module directly for the same reason NewUniqueID exists twice, and this is how the eleven
+	// external adapters reach it - they are separate packages and `../jsonstor/PrimaryKey` is
+	// not a path any of them has. See jsonx/.plans/primary-keys-and-indexes.md.
+	jsonstor.PrimaryKey = require( './jsonstor/PrimaryKey' )();
 
 	// ***The target-agnostic half of a translator, for whoever writes the next one.***
 	// The criteria-shape and allowlist questions, with no target in them. See the module.

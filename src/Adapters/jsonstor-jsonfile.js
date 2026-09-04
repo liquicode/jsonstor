@@ -33,16 +33,28 @@ module.exports = {
 		let Storage = jsonstor.StorageInterface();
 		Storage.Settings = Settings;
 		Storage.MemoryStorage = MemoryStorageAdapter.GetAdapter( jsonstor, Settings );
+		// ***The key is the memory storage's, because the memory storage is where it is enforced.***
+		// This adapter forwards every document function to it and persists what comes back, so a
+		// second resolution here would be a second description of one fact.
+		Storage.PrimaryKeyInfo = Storage.MemoryStorage.PrimaryKeyInfo;
+
 		read_storage();
 
 
 		//=====================================================================
+		// ***Every read of the file rebuilds the index***, because the read replaces the whole
+		// store rather than adding to it. An index left over from the previous contents does not
+		// return wrong rows, it ***loses them silently***, which is the failure shape this design
+		// exists to close. Synchronous, because there is nothing here to await into.
 		function read_storage()
 		{
-			Storage.MemoryStorage.store = [];
-			if ( !LIB_FS.existsSync( Settings.Path ) ) { return; }
-			let json = LIB_FS.readFileSync( Settings.Path, 'utf8' );
-			Storage.MemoryStorage.store = JSON.parse( json );
+			Storage.MemoryStorage.Store = [];
+			if ( LIB_FS.existsSync( Settings.Path ) )
+			{
+				let json = LIB_FS.readFileSync( Settings.Path, 'utf8' );
+				Storage.MemoryStorage.Store = JSON.parse( json );
+			}
+			Storage.MemoryStorage.RebuildIndex();
 			return;
 		}
 
@@ -55,7 +67,7 @@ module.exports = {
 			{
 				LIB_FS.mkdirSync( folder, { recursive: true } );
 			}
-			let json = JSON.stringify( Storage.MemoryStorage.store );
+			let json = JSON.stringify( Storage.MemoryStorage.Store );
 			LIB_FS.writeFileSync( Settings.Path, json, 'utf8' );
 			return;
 		}
@@ -64,7 +76,8 @@ module.exports = {
 		//=====================================================================
 		function drop_storage()
 		{
-			Storage.MemoryStorage.store = [];
+			Storage.MemoryStorage.Store = [];
+			Storage.MemoryStorage.RebuildIndex();
 			if ( LIB_FS.existsSync( Settings.Path ) )
 			{
 				LIB_FS.unlinkSync( Settings.Path );
@@ -88,6 +101,26 @@ module.exports = {
 				Version: jsongin.Library.version,
 				InProcess: true,
 			} );
+		};
+
+
+		//=====================================================================
+		// RefreshIndex
+		//=====================================================================
+
+
+		// ***Re-reads the file and rebuilds the index from what is in it.***
+		//
+		// ***This adapter caches the whole collection, so a foreign write makes the documents
+		// stale and not only the index.*** Refreshing an index without re-reading the file would
+		// answer a caller who knows something else wrote by rebuilding an index over contents
+		// which are equally out of date - a repair which repairs the smaller half of the problem
+		// and reports success. So the file is read first, which is the escape hatch a caller
+		// pointing this adapter at a shared file actually needs.
+		Storage.RefreshIndex = async function ( Options )
+		{
+			read_storage();
+			return await Storage.MemoryStorage.RefreshIndex( Options );
 		};
 
 
@@ -158,10 +191,10 @@ module.exports = {
 		Storage.InsertOne = async function ( Document, Options ) 
 		{
 			let results = await Storage.MemoryStorage.InsertOne( Document, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -175,10 +208,10 @@ module.exports = {
 		Storage.InsertMany = async function ( Documents, Options ) 
 		{
 			let results = await Storage.MemoryStorage.InsertMany( Documents, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -228,10 +261,10 @@ module.exports = {
 		Storage.UpdateOne = async function UpdateOne( Criteria, Update, Options ) 
 		{
 			let results = await Storage.MemoryStorage.UpdateOne( Criteria, Update, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -245,10 +278,10 @@ module.exports = {
 		Storage.UpdateMany = async function UpdateMany( Criteria, Update, Options ) 
 		{
 			let results = await Storage.MemoryStorage.UpdateMany( Criteria, Update, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -262,10 +295,10 @@ module.exports = {
 		Storage.ReplaceOne = async function ReplaceOne( Criteria, Document, Options ) 
 		{
 			let results = await Storage.MemoryStorage.ReplaceOne( Criteria, Document, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -279,10 +312,10 @@ module.exports = {
 		Storage.DeleteOne = async function DeleteOne( Criteria, Options ) 
 		{
 			let results = await Storage.MemoryStorage.DeleteOne( Criteria, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};
@@ -296,10 +329,10 @@ module.exports = {
 		Storage.DeleteMany = async function DeleteMany( Criteria, Options ) 
 		{
 			let results = await Storage.MemoryStorage.DeleteMany( Criteria, Options );
-			if ( Storage.MemoryStorage.is_dirty )
+			if ( Storage.MemoryStorage.IsDirty )
 			{
 				if ( Settings.AutoFlush ) { write_storage(); }
-				Storage.MemoryStorage.is_dirty = false;
+				Storage.MemoryStorage.IsDirty = false;
 			}
 			return results;
 		};

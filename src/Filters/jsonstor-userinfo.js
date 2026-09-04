@@ -207,6 +207,82 @@ module.exports = {
 
 
 		//=====================================================================
+		// StorageInfo
+		//---------------------------------------------------------------------
+		// Reports what the underlying storage is talking to.
+		//=====================================================================
+
+
+		// ***The two which ask about the storage rather than about the documents in it, and
+		// neither of them takes a user.***
+		//
+		// ***This list had stopped at twelve and nothing was watching.*** StorageInfo was never
+		// forwarded here or in jsonstor-oplog, so a storage with either filter in front of it
+		// answered `StorageInfo is not implemented` - the stub, reached because the filter never
+		// replaced it. Invisible because no test puts a filter in front of that call. Measured
+		// 2026-09-04, while adding the fourteenth. See jsonx/.plans/primary-keys-and-indexes.md.
+		//
+		// ***get_storage_options is deliberately not used.*** It demands an Options.User, which
+		// is the right question of a call that reads or writes a document and the wrong one of a
+		// call that asks which server this is - and D) Engine Contract Tests asks StorageInfo()
+		// with no arguments at all. Neither call can leak a document, because neither returns
+		// one: RefreshIndex rebuilds the storage's own index, which every later read still
+		// reaches through this filter's permission criteria.
+		Filter.StorageInfo =
+			async function StorageInfo( Options )
+			{
+				return await Storage.StorageInfo( Options );
+			};
+
+
+		Filter.RefreshIndex =
+			async function RefreshIndex( Options )
+			{
+				return await Storage.RefreshIndex( Options );
+			};
+
+
+		//=====================================================================
+		// FindMany2
+		//---------------------------------------------------------------------
+		// Returns the documents specified by Criteria, sorted and limited.
+		// Only documents that allow the user read or write access are returned.
+		//=====================================================================
+
+
+		// ***Absent until now, and not merely unforwarded - it was not a function at all.***
+		// The permission criteria goes in the same slot it goes in for FindMany, so MaxCount
+		// limits the documents this user may see rather than limiting the collection and then
+		// filtering, which would return fewer documents than asked for and look like a shortage.
+		Filter.FindMany2 =
+			async function FindMany2( Criteria, Projection, Sort, MaxCount, Options )
+			{
+				return new Promise(
+					async function ( resolve, reject )
+					{
+						try
+						{
+							if ( jsongin.ShortType( Options ) !== 'o' ) { throw PARAMETER_ERROR( 'Options', 'object' ); }
+							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
+							let storage_options = JSON.parse( JSON.stringify( Options ) );
+							storage_options.ReturnDocuments = true;
+							let criteria = Filter.User( storage_options ).Criteria( Criteria );
+							let documents = await Storage.FindMany2( criteria, Projection, Sort, MaxCount, storage_options );
+							documents.forEach( function ( document ) { clean_document( document ); } );
+							resolve( documents );
+							return;
+						}
+						catch ( error )
+						{
+							reject( error );
+							return;
+						}
+						return;
+					} );
+			};
+
+
+		//=====================================================================
 		// Count
 		//---------------------------------------------------------------------
 		// Returns the number of objects specified by Criteria.
