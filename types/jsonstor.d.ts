@@ -450,6 +450,13 @@ declare module '@liquicode/jsonstor'
 		 * Also reachable as `Translators.ElasticExpression`.
 		 */
 		ElasticExpression: CriteriaTranslatorPlugin;
+		/**
+		 * The built-in DynamoDB filter expression translator. Its `Pushdown` is a
+		 * `{ Expr, Names, Values }` triple rather than a string or an object, and `Values` holds
+		 * plain JavaScript values which the adapter marshals.
+		 * Also reachable as `Translators.DynamoExpression`.
+		 */
+		DynamoExpression: CriteriaTranslatorPlugin;
 
 		/**
 		 * A new unique identifier.

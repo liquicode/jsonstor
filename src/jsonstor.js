@@ -399,6 +399,23 @@ module.exports = function ( AdapterName, Settings, Filters )
 				Product: ( jsongin.ShortType( Facts.Product ) === 's' ) ? Facts.Product : '',
 				Version: version,
 				VersionParts: jsonstor.VersionParts( version ),
+				// ***Whether the product has a version at all, which is not the same as this
+				// adapter failing to read one.***
+				//
+				// Every product this family reached until 2026-09-05 published a version, so an
+				// empty `Version` could only mean a read had failed and the engine contract
+				// required a non-empty one. ***DynamoDB is a service with no version number of
+				// any kind*** - nothing to find by standing an older one up, nothing for
+				// `CheckDialectBoundary` to compare, and no name to declare under the container
+				// naming rule.
+				//
+				// ***An adapter says so rather than leaving the field empty and hoping***, so
+				// the two cases stay distinguishable: a declared `Versionless` is a fact, and a
+				// bare empty string is still a gap the contract refuses. `jsonstor-jsonfile` and
+				// the browser storages take the other road available - they report the version
+				// of the `jsongin` which decides their queries - and that road is closed to an
+				// adapter which really is talking to a server.
+				Versionless: ( Facts.Versionless === true ),
 				Banner: ( jsongin.ShortType( Facts.Banner ) === 's' ) ? Facts.Banner : version,
 				// ***Empty when in-process***, so no caller has to special-case an adapter which
 				// is not talking to anything over a socket.
@@ -552,11 +569,17 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// the thirty one operators identically on 2026-09-05, so one translator serves the fork -
 	// the same reason Mango sits here rather than inside jsonstor-mongodb.
 	jsonstor.LoadPlugin( require( './jsonstor/ElasticExpression' )( jsonstor ) );
+	// ***DynamoDB is one product and this one still ships here***, because a translator ships in
+	// jsonstor and never in an adapter - the rule the other three arrived at for their own
+	// reasons. Its Pushdown is a `{ Expr, Names, Values }` triple rather than a string or an
+	// object, which is what the seam being opaque was for.
+	jsonstor.LoadPlugin( require( './jsonstor/DynamoExpression' )( jsonstor ) );
 	// ***Named for convenience; the registry is the authority.*** An adapter reaches its
 	// translator by name either way, and a third party translator has only the registry.
 	jsonstor.SqlExpression = jsonstor.Translators[ 'SqlExpression' ];
 	jsonstor.MangoExpression = jsonstor.Translators[ 'MangoExpression' ];
 	jsonstor.ElasticExpression = jsonstor.Translators[ 'ElasticExpression' ];
+	jsonstor.DynamoExpression = jsonstor.Translators[ 'DynamoExpression' ];
 
 	// ***What every registered translator does with every jsongin query operator.***
 	// Built from jsongin's operator list and whatever is registered above, so neither the
