@@ -15,7 +15,58 @@ const jsongin = require( '@liquicode/jsongin' );
 // `BigInt=function  process.hrtime.bigint=undefined`.
 // ***Test for the function you are about to call, not for a thing which arrived
 // near it.***
-const HAS_HRTIME_BIGINT = ( typeof process.hrtime.bigint === 'function' );
+const HAS_HRTIME = ( typeof process !== 'undefined' ) && ( typeof process.hrtime === 'function' );
+const HAS_HRTIME_BIGINT = HAS_HRTIME && ( typeof process.hrtime.bigint === 'function' );
+
+//---------------------------------------------------------------------
+// ***And `typeof` does not guard a member access.*** The line above used to read
+// `typeof process.hrtime.bigint`, which evaluates `process.hrtime` first - so on a
+// runtime with no `process` at all it threw before `typeof` was reached. At
+// ***module scope***, in a filter bundled into core, so `jsonstor()` itself failed.
+// Measured on 2026-09-04 against the published `dist/jsonstor.min.js` in headless
+// Chrome 152, which answered `process is not defined` before a storage could be
+// constructed.
+// ***A guarded constant is only half the repair.*** With no timer a browser can
+// read, the filter would be guarded into logging nothing - a worse defect than the
+// crash it replaced. `performance.now()` is that timer: every browser has it, and
+// Node has carried it as a global since 16, below which `process.hrtime` answers
+// anyway.
+const HAS_PERFORMANCE_NOW = ( typeof performance !== 'undefined' ) && ( typeof performance.now === 'function' );
+
+
+//---------------------------------------------------------------------
+// The three timer paths. A `read_timer` value is only ever handed back to
+// `elapsed_ms`, so which path ran is invisible to the caller and the log reads the
+// same on every runtime.
+function read_timer()
+{
+	if ( HAS_HRTIME_BIGINT ) { return process.hrtime.bigint(); }
+	if ( HAS_HRTIME ) { return process.hrtime(); }
+	return read_clock_ms();
+}
+
+function elapsed_ms( StartTime )
+{
+	if ( HAS_HRTIME_BIGINT )
+	{
+		return Number( process.hrtime.bigint() - StartTime ) / 1e6; // ns to ms
+	}
+	if ( HAS_HRTIME )
+	{
+		let elapsed = process.hrtime( StartTime ); // [ seconds, nanoseconds ]
+		return ( elapsed[ 0 ] * 1e3 ) + ( elapsed[ 1 ] / 1e6 );
+	}
+	return read_clock_ms() - StartTime;
+}
+
+// A millisecond clock, monotonic where the runtime offers one. `Date.now` is the
+// degenerate case rather than a fourth path - it answers in the same units, so
+// nothing above it changes shape.
+function read_clock_ms()
+{
+	if ( HAS_PERFORMANCE_NOW ) { return performance.now(); }
+	return Date.now();
+}
 
 
 module.exports = {
@@ -68,24 +119,11 @@ module.exports = {
 						else { plugin_name = 'unknown plugin'; }
 
 						let timestamp = ( new Date() ).toISOString();
-						let start_time = null;
-						if ( HAS_HRTIME_BIGINT ) { start_time = process.hrtime.bigint(); }
-						else { start_time = process.hrtime(); };
+						let start_time = read_timer();
 
 						let results = await Storage[ FunctionName ]( ...ParameterValues );
 
-						let duration = null;
-						if ( HAS_HRTIME_BIGINT )
-						{
-							let end_time = process.hrtime.bigint();
-							duration = Number( end_time - start_time ); //ns
-							duration = ( duration / 1e6 ); // ms
-						}
-						else 
-						{
-							let elapsed = process.hrtime( start_time ); // [ seconds, nanoseconds ]
-							duration = ( elapsed[ 0 ] * 1e3 ) + ( elapsed[ 1 ] / 1e6 ); // ms
-						};
+						let duration = elapsed_ms( start_time ); // ms
 
 						let message = '=== ';
 						if ( Settings.IncludeTimestamp ) { message += `${timestamp} | `; }
