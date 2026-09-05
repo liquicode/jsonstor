@@ -548,10 +548,15 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// and narrow this translator with an option rather than writing another one, which is why
 	// it ships here beside SqlExpression instead of inside jsonstor-mongodb.
 	jsonstor.LoadPlugin( require( './jsonstor/MangoExpression' )( jsonstor ) );
+	// ***Query DSL is not Elasticsearch's alone either.*** OpenSearch answered every one of
+	// the thirty one operators identically on 2026-09-05, so one translator serves the fork -
+	// the same reason Mango sits here rather than inside jsonstor-mongodb.
+	jsonstor.LoadPlugin( require( './jsonstor/ElasticExpression' )( jsonstor ) );
 	// ***Named for convenience; the registry is the authority.*** An adapter reaches its
 	// translator by name either way, and a third party translator has only the registry.
 	jsonstor.SqlExpression = jsonstor.Translators[ 'SqlExpression' ];
 	jsonstor.MangoExpression = jsonstor.Translators[ 'MangoExpression' ];
+	jsonstor.ElasticExpression = jsonstor.Translators[ 'ElasticExpression' ];
 
 	// ***What every registered translator does with every jsongin query operator.***
 	// Built from jsongin's operator list and whatever is registered above, so neither the

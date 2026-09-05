@@ -445,6 +445,11 @@ declare module '@liquicode/jsonstor'
 		SqlExpression: CriteriaTranslatorPlugin;
 		/** The built-in Mango criteria translator. Also reachable as `Translators.MangoExpression`. */
 		MangoExpression: CriteriaTranslatorPlugin;
+		/**
+		 * The built-in Elasticsearch Query DSL criteria translator, which serves OpenSearch too.
+		 * Also reachable as `Translators.ElasticExpression`.
+		 */
+		ElasticExpression: CriteriaTranslatorPlugin;
 
 		/**
 		 * A new unique identifier.
