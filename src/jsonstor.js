@@ -574,12 +574,18 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// reasons. Its Pushdown is a `{ Expr, Names, Values }` triple rather than a string or an
 	// object, which is what the seam being opaque was for.
 	jsonstor.LoadPlugin( require( './jsonstor/DynamoExpression' )( jsonstor ) );
+	// ***N1QL is SQL-shaped and is not a SqlExpression dialect***, which was decided by pointing
+	// SqlExpression at a live Couchbase server: 7 of 31 exact, eight statements refused, and one
+	// nested-path rendering which returned nothing without erroring. A column is the unit
+	// SqlExpression is built on and N1QL has none - the document is the row.
+	jsonstor.LoadPlugin( require( './jsonstor/N1qlExpression' )( jsonstor ) );
 	// ***Named for convenience; the registry is the authority.*** An adapter reaches its
 	// translator by name either way, and a third party translator has only the registry.
 	jsonstor.SqlExpression = jsonstor.Translators[ 'SqlExpression' ];
 	jsonstor.MangoExpression = jsonstor.Translators[ 'MangoExpression' ];
 	jsonstor.ElasticExpression = jsonstor.Translators[ 'ElasticExpression' ];
 	jsonstor.DynamoExpression = jsonstor.Translators[ 'DynamoExpression' ];
+	jsonstor.N1qlExpression = jsonstor.Translators[ 'N1qlExpression' ];
 
 	// ***What every registered translator does with every jsongin query operator.***
 	// Built from jsongin's operator list and whatever is registered above, so neither the

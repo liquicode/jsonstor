@@ -457,6 +457,13 @@ declare module '@liquicode/jsonstor'
 		 * Also reachable as `Translators.DynamoExpression`.
 		 */
 		DynamoExpression: CriteriaTranslatorPlugin;
+		/**
+		 * The built-in Couchbase N1QL criteria translator. Its `Pushdown` is a WHERE clause
+		 * string, like `SqlExpression`'s, but it is not a SQL dialect: it addresses a nested
+		 * field as a path rather than as a column, and has no payload column model at all.
+		 * Also reachable as `Translators.N1qlExpression`.
+		 */
+		N1qlExpression: CriteriaTranslatorPlugin;
 
 		/**
 		 * A new unique identifier.
