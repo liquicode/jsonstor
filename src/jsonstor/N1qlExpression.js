@@ -210,21 +210,129 @@ module.exports = function ( jsonstor )
 	// identifier which collides with one is a syntax error rather than a field - `probe` is
 	// reserved, which is how this was found. Quoting unconditionally costs nothing and removes
 	// the whole class.
+	//
+	// ***A numeric step is not a field name here and it is refused.*** `{ 'arr.0': 10 }` means
+	// the first ***element*** of an array to jsongin, as it does to MongoDB, and N1QL spells
+	// that `arr[0]`; `` `arr`.`0` `` asks for a field literally named `0`. Rendering the second
+	// for the first returns nothing and - because every operator in that path is exact - claimed
+	// `Residual: null` while doing it. ***Measured 2026-09-05 against a live server***, where
+	// `{ 'arr.0': 10 }`, `{ 'objs.0.x': 1 }` and `{ 'arr.1': 10 }` each answered `[]` against
+	// jsongin's one document.
+	//
+	// ***Refusing is not the only rendering available, and it is the one which is certainly
+	// right.*** jsongin resolves that path against an array element ***and*** against a field of
+	// that name, so a faithful rendering is a disjunction of `arr[0]` and `` `arr`.`0` `` - and
+	// a disjunction whose two halves have not been put to a server is a guess. Dropping the
+	// condition broadens, which costs a document read and never an answer. See
+	// jsonx/.plans/wave-5-query-languages.md.
+	//
+	// ***`jsonstor-dynamodb` reached the same conclusion about the same shape*** from the other
+	// direction: a dotted path there addresses a map and only a map, and it is left to jsongin
+	// for that reason.
 	function field_reference( FieldName )
 	{
 		if ( !FieldName ) { return null; }
-		let parts = String( FieldName ).split( '.' );
+		return path_reference( '', String( FieldName ).split( '.' ) );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The same path, relative to a base expression.*** An empty base gives the bare field
+	// reference above; a bound variable gives the path relative to one array element, which is
+	// what path_branches needs and the only reason this is separate.
+	function path_reference( Base, Segments )
+	{
 		let quoted = [];
-		for ( let index = 0; index < parts.length; index++ )
+		for ( let index = 0; index < Segments.length; index++ )
 		{
-			let part = parts[ index ];
+			let part = Segments[ index ];
 			if ( !part.length ) { return null; }
 			// A backtick inside an identifier is pathological and the escape is not worth
 			// guessing at. Refusing drops the condition, which broadens.
 			if ( part.indexOf( '`' ) >= 0 ) { return null; }
+			// See above: an array index, not a field name.
+			if ( /^[0-9]+$/.test( part ) ) { return null; }
 			quoted.push( '`' + part + '`' );
 		}
+		if ( !quoted.length ) { return Base ? Base : null; }
+		if ( Base ) { return Base + '.' + quoted.join( '.' ); }
 		return quoted.join( '.' );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***How deep a path the array repair is rendered for.***
+	//
+	// ***The branch count doubles per segment*** - one for a plain field, two for one dot, four
+	// for two - so the repair is rendered while the clause stays small and a deeper path is
+	// dropped instead, which costs a document read and is never wrong. `MangoExpression` carries
+	// the same cap for the same construction; the number is not a measurement, it is here so
+	// that a path nobody expected cannot silently become a thousand branch clause.
+	const MAX_PATH_BRANCH_SEGMENTS = 4;
+
+
+	//---------------------------------------------------------------------
+	// ***Every place an array can sit along a path, one branch each.***
+	//
+	// ***A dotted path does not say which of its segments holds an array***, and jsongin
+	// resolves candidates at every one of them: `{ 'instock.qty': { $lte: 20 } }` admits a
+	// document whose `instock` is an ***array of embedded documents*** one of which has a small
+	// `qty`. N1QL's `` `instock`.`qty` `` addresses a field of an object and answers MISSING for
+	// an array, so the path as written returns nothing for exactly those documents - and every
+	// operator along it being exact, the translator claimed `Residual: null` while losing them.
+	//
+	// ***Found by the shared conformance inventory and by nothing before it.*** The operator
+	// probe sends one criteria per operator, the translator check listed sixteen shapes
+	// including a nested path, and neither ever put an array at an ***intermediate*** segment.
+	// array_aware already covered an array at the ***leaf***, which is why this looked covered.
+	//
+	// ***This is `MangoExpression.element_branches` in another language***, and that file's
+	// measurement is why the obvious repair is not the one written here: a disjunct per split of
+	// the path ***still loses documents***, because the branch it omits is the leaf's own.
+	// Measured there on CouchDB 2.3.1 and 3.5.2, 2026-09-03, over a corpus holding an array at
+	// every position. The leaf branch is array_aware's, inside each rendered condition; the
+	// prefix branches are these.
+	//
+	// Returns a list of { Ref, Wrap } - the expression to render the condition against, and the
+	// ANY..SATISFIES it has to sit inside. Wrap is null for the path as written.
+	function path_branches( Segments, Base, Depth )
+	{
+		let whole = path_reference( Base, Segments );
+		if ( whole === null ) { return null; }
+		let branches = [ { Ref: whole, Wrap: null } ];
+
+		for ( let index = 1; index < Segments.length; index++ )
+		{
+			let head = path_reference( Base, Segments.slice( 0, index ) );
+			if ( head === null ) { return null; }
+			// ***A variable of its own per depth.*** array_aware binds `jsonstor_v` and so does
+			// $elemMatch, and a repair which shadowed either would be correct today and
+			// confusing forever.
+			let variable = `jsonstor_p${Depth}`;
+			// ***The rest of the path, asked of the element*** - which is the same question one
+			// segment shorter, arrays and all.
+			let inner = path_branches( Segments.slice( index ), variable, Depth + 1 );
+			if ( inner === null ) { return null; }
+			for ( let which = 0; which < inner.length; which++ )
+			{
+				branches.push( {
+					Ref: inner[ which ].Ref,
+					Wrap: any_wrapper( head, variable, inner[ which ].Wrap ),
+				} );
+			}
+		}
+		return branches;
+	}
+
+
+	//---------------------------------------------------------------------
+	function any_wrapper( Head, Variable, Inner )
+	{
+		return function ( Text )
+		{
+			let body = Inner ? Inner( Text ) : Text;
+			return `(TYPE(${Head}) = "array" AND ANY ${Variable} IN ${Head} SATISFIES ${body} END)`;
+		};
 	}
 
 
@@ -424,22 +532,78 @@ module.exports = function ( jsonstor )
 
 
 	//---------------------------------------------------------------------
-	// One `$operator: value` against one field.
+	// ***One `$operator: value` against one field, in every place an array can sit.***
+	//
+	// The rendering itself is render_condition_at, once per branch; this is the walk over the
+	// branches and the OR which joins them. See path_branches.
 	function render_condition( FieldName, Operator, Value, options )
 	{
 		if ( options.Fidelities[ Operator ] === 'dropped' ) { return null; }
 		if ( !field_is_pushable( FieldName, options ) ) { return null; }
-		let ref = field_reference( FieldName );
-		if ( !ref ) { return null; }
 
+		let segments = String( FieldName ).split( '.' );
+		if ( segments.length > MAX_PATH_BRANCH_SEGMENTS ) { return null; }
+		let branches = path_branches( segments, '', 0 );
+		if ( branches === null ) { return null; }
+
+		// See NEGATED_BY: a negation is taken over the whole branch set and never inside one.
+		let positive = NEGATED_BY[ Operator ];
+		let render_as = positive ? positive : Operator;
+
+		let rendered = [];
+		for ( let index = 0; index < branches.length; index++ )
+		{
+			let text = render_condition_at( branches[ index ].Ref, render_as, Value, options );
+			// ***A branch which cannot be rendered drops the whole condition.*** Keeping the
+			// others would ask about some of the places an array can sit and none of the rest,
+			// which is the narrowing this repair exists to remove, arrived at from inside the
+			// repair.
+			if ( !text ) { return null; }
+			let wrap = branches[ index ].Wrap;
+			rendered.push( wrap ? wrap( text ) : text );
+		}
+		let combined = ( rendered.length === 1 ) ? rendered[ 0 ] : `(${rendered.join( ' OR ' )})`;
+		if ( positive ) { return negate( combined ); }
+		return combined;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***An operator which negates negates the whole branch set, never one branch.***
+	//
+	// `{ 'a.b': { $ne: 10 } }` asks that ***no*** resolution of the path equals 10, and the
+	// branches ***are*** the resolutions - so the rendering is `NOT( any of them matches )` and
+	// never `( any of them fails to match )`. The two are different questions the moment a path
+	// has more than one resolution, which is the moment an array sits along it.
+	//
+	// ***Measured 2026-09-05, and it is the defect the paths corpus was added to find.*** Against
+	// a document whose `a` is `[ { b: 10 }, { b: 99 } ]`, the per-branch form admitted it - the
+	// second element satisfies the negation - where jsongin answers false because the first
+	// element matches. It broadened rather than narrowed, so no document was lost; ***but it
+	// claimed `Residual: null` while doing it***, which is a FALSE-EXACT and a wrong answer.
+	//
+	// `$nexMatch` is internal and exists only for this table: `$nex` is not the negation of the
+	// `$eqx` rendering - see the `$eqx` case - so it needs a positive form of its own to negate.
+	const NEGATED_BY = {
+		'$ne': '$eq',
+		'$nin': '$in',
+		'$nex': '$nexMatch',
+	};
+
+
+	//---------------------------------------------------------------------
+	// One `$operator: value` against one already-rendered reference, which is a field path or a
+	// bound array element.
+	//
+	// ***The negating operators are not here***, only the positive forms they are built from.
+	// See NEGATED_BY.
+	function render_condition_at( ref, Operator, Value, options )
+	{
 		switch ( Operator )
 		{
 			case '$eq':
 			case '$ImplicitEq':
 				return render_equality( ref, Value );
-
-			case '$ne':
-				return negate( render_equality( ref, Value ) );
 
 			case '$gt': return render_comparison( ref, '>', Value );
 			case '$gte': return render_comparison( ref, '>=', Value );
@@ -447,7 +611,6 @@ module.exports = function ( jsonstor )
 			case '$lte': return render_comparison( ref, '<=', Value );
 
 			case '$in': return render_in( ref, Value );
-			case '$nin': return negate( render_in( ref, Value ) );
 
 			case '$regex': return render_regex( ref, Value, options.RegexOptions );
 
@@ -507,7 +670,21 @@ module.exports = function ( jsonstor )
 					if ( !'nsb'.includes( st ) ) { return null; }
 					let literal = render_literal( Value[ index ] );
 					if ( literal === null ) { return null; }
-					terms.push( `${literal} IN ${ref}` );
+					// ***`$all` also selects against a field which is not an array***, which
+					// MongoDB documents and jsongin follows: `{ n: { $all: [ 10 ] } }` matches a
+					// document whose `n` is the number 10. N1QL's `IN` wants an array on the
+					// right and answers nothing for a scalar, so the equality is the other half
+					// of the same question.
+					//
+					// ***Measured as a NARROWING on 2026-09-05*** - `IN` alone lost the document
+					// while claiming `Residual: null` - and found by the shared conformance
+					// inventory, because every `$all` the operator probe sent was aimed at a
+					// field which really was an array.
+					//
+					// ***A list of two terms still cannot match a scalar***, and that falls out
+					// rather than being special-cased: the terms are joined by AND, and one
+					// value is not equal to two different literals.
+					terms.push( `(${literal} IN ${ref} OR ${ref} = ${literal})` );
 				}
 				return `(${terms.join( ' AND ' )})`;
 			}
@@ -557,22 +734,26 @@ module.exports = function ( jsonstor )
 				} );
 			}
 
-			case '$nex':
+			// ***The positive half of $nex, which is not the $eqx rendering.***
+			//
+			// $eqx is broadening - it admits every boolean - and ***negating a broadening
+			// expression narrows***, which is the one direction forbidden here. So $nex negates
+			// the ***certain*** half instead: a TO_STRING match is only certain over a number or
+			// a string, and a rendering which misses booleans as an equality over-admits them as
+			// a negation. Broadening, in the safe direction.
+			//
+			// ***The negation itself is applied by render_condition***, over the whole branch
+			// set. See NEGATED_BY.
+			case '$nexMatch':
 			{
 				let st = jsongin.ShortType( Value );
 				if ( !'ns'.includes( st ) ) { return null; }
 				let literal = render_literal( String( Value ) );
 				if ( literal === null ) { return null; }
-				// ***$nex is not the negation of the $eqx rendering above, and that is the point.***
-				// That one is broadening - it admits every boolean - and ***negating a broadening
-				// expression narrows***, which is the one direction forbidden here. So this
-				// negates the ***certain*** half instead: a TO_STRING match is only certain over a
-				// number or a string, and a rendering which misses booleans as an equality
-				// over-admits them as a negation. Broadening, in the safe direction.
-				return negate( array_aware( ref, function ( r )
+				return array_aware( ref, function ( r )
 				{
 					return `(TYPE(${r}) IN [ "number", "string" ] AND TO_STRING(${r}) = ${literal})`;
-				} ) );
+				} );
 			}
 
 			default:
