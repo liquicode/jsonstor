@@ -44,8 +44,7 @@ module.exports = function ()
 	//
 	// ***Declared rather than derived.*** The position differs per function - Options is the
 	// first argument of DropStorage and the fifth of FindMany2 - and reading the last argument
-	// instead would guess wrongly the moment a caller omitted an optional one. FindMany2 is
-	// listed here although StorageInterface() does not declare it, because the adapters do.
+	// instead would guess wrongly the moment a caller omitted an optional one.
 	//
 	// ***StorageInfo and RefreshIndex are deliberately absent.*** Both ask about the storage
 	// rather than about the documents in it, so neither has a Pushdown or a Residual to collect -

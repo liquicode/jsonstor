@@ -251,11 +251,11 @@ module.exports = {
 
 
 		// ***Absent until now, and not merely unforwarded - it was not a function at all.***
-		// The permission criteria goes in the same slot it goes in for FindMany, so MaxCount
-		// limits the documents this user may see rather than limiting the collection and then
+		// The permission criteria goes in the same slot it goes in for FindMany, so the page
+		// is taken over the documents this user may see rather than over the collection and then
 		// filtering, which would return fewer documents than asked for and look like a shortage.
 		Filter.FindMany2 =
-			async function FindMany2( Criteria, Projection, Sort, MaxCount, Options )
+			async function FindMany2( Criteria, Projection, Sort, Paging, Options )
 			{
 				return new Promise(
 					async function ( resolve, reject )
@@ -267,7 +267,7 @@ module.exports = {
 							let storage_options = JSON.parse( JSON.stringify( Options ) );
 							storage_options.ReturnDocuments = true;
 							let criteria = Filter.User( storage_options ).Criteria( Criteria );
-							let documents = await Storage.FindMany2( criteria, Projection, Sort, MaxCount, storage_options );
+							let documents = await Storage.FindMany2( criteria, Projection, Sort, Paging, storage_options );
 							documents.forEach( function ( document ) { clean_document( document ); } );
 							resolve( documents );
 							return;

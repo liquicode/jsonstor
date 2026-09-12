@@ -2,6 +2,7 @@
 
 const NewUniqueID = require( '../jsonstor/NewUniqueID' );
 const PrimaryKey = require( '../jsonstor/PrimaryKey' )();
+const PAGING = require( '../jsonstor/Paging' )();
 
 const jsongin = require( '@liquicode/jsongin' );
 // const jsonstor = require( '../jsonstor' )();
@@ -590,7 +591,7 @@ module.exports = {
 		//=====================================================================
 
 
-		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, MaxCount, Options )
+		Storage.FindMany2 = async function FindMany2( Criteria, Projection, Sort, Paging, Options )
 		{
 			return new Promise(
 				async function ( resolve, reject )
@@ -628,7 +629,7 @@ module.exports = {
 							report_scan( Options, Criteria, Storage.Store.length, documents.length );
 						}
 						if ( Sort ) { documents = jsongin.Sort( documents, Sort ); }
-						if ( MaxCount && ( MaxCount > 0 ) && ( documents.length >= MaxCount ) ) { documents = documents.splice( 0, MaxCount ); }
+						documents = PAGING.Apply( documents, Paging );
 						resolve( documents );
 					}
 					catch ( error )

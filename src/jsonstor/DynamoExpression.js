@@ -239,6 +239,25 @@ module.exports = function ( jsonstor )
 	}
 
 
+	// ***Only the placeholders the expression uses travel with it.*** A condition is declined
+	// after its field was aliased - an `$in` holding an object aliases the field and then finds
+	// the member it cannot render - and DynamoDB refuses a request whose ExpressionAttributeNames
+	// carries an entry the expression never mentions: `Value provided in
+	// ExpressionAttributeNames unused in expressions`. So a dropped condition beside a rendered
+	// one turned a criteria the engine answers into an error from the adapter. Found by
+	// `H) Engine Parity Tests` on DynamoDB Local, 2026-09-12.
+	function referenced( Expression, Table )
+	{
+		let kept = {};
+		let keys = Object.keys( Table );
+		for ( let index = 0; index < keys.length; index++ )
+		{
+			if ( new RegExp( keys[ index ] + '(?![0-9])' ).test( Expression ) ) { kept[ keys[ index ] ] = Table[ keys[ index ] ]; }
+		}
+		return kept;
+	}
+
+
 	// ***Every field goes through an alias, unconditionally.*** A DynamoDB reserved word cannot
 	// appear in an expression at all and the list runs to hundreds of entries, so testing
 	// membership per field is more code and more risk than aliasing everything.
@@ -453,6 +472,12 @@ module.exports = function ( jsonstor )
 			case '$size':
 			{
 				if ( jsongin.ShortType( Operand ) !== 'n' ) { not_exact( state ); return null; }
+				// ***A fraction or a negative is jsongin's to refuse.*** Rendered, `size(a) = 2.5`
+				// is a filter which matches nothing, and an exact claim would hand that empty
+				// set to the caller as the answer where every other storage in the family
+				// refuses the query. Dropped to the residual, jsongin refuses it here too.
+				// Measured on DynamoDB Local, 2026-09-12.
+				if ( !Number.isInteger( Operand ) || ( Operand < 0 ) ) { not_exact( state ); return null; }
 				// ***The type guard is what makes this exact.*** `size()` counts the bytes of a
 				// string and the entries of a map as readily as the elements of a list, and
 				// jsongin's $size answers only for an array - measured broadening without the
@@ -657,7 +682,7 @@ module.exports = function ( jsonstor )
 
 		return {
 			Pushdown: expression
-				? { Expr: expression, Names: state.Names, Values: state.Values }
+				? { Expr: expression, Names: referenced( expression, state.Names ), Values: referenced( expression, state.Values ) }
 				: { Expr: null, Names: {}, Values: {} },
 			Residual: state.exact ? null : criteria,
 			SortAbsorbed: false,

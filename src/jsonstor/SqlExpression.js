@@ -891,6 +891,14 @@ module.exports = function ( jsonstor )
 										let remainder = value[ 1 ];
 										if ( jsongin.ShortType( divisor ) !== 'n' ) { continue; }
 										if ( jsongin.ShortType( remainder ) !== 'n' ) { continue; }
+										// ***The operands are truncated too***, because jsongin and MongoDB read
+										// `[ 5.5, 1 ]` as `[ 5, 1 ]`. Rendered as written, `MOD( 11, 5.5 ) = 1` is
+										// false where the criteria matches 11, and a row the clause excludes is
+										// lost for good - no residual can recover it. A divisor which truncates
+										// to zero is one jsongin refuses, so the residual is left to say so.
+										// Measured on MySQL 8.0, 2026-09-12.
+										divisor = Math.trunc( divisor );
+										remainder = Math.trunc( remainder );
 										if ( divisor === 0 ) { continue; }
 										let field_ref = get_field_reference( options );
 										if ( !field_ref ) { continue; }

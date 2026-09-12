@@ -73,8 +73,8 @@ Database Interface
 	Returns the first document satisfying `Criteria`.
 - `FindMany( Criteria, Projection, Options )` :
 	Returns all documents satisfying `Criteria`.
-- `FindMany2( Criteria, Projection, Sort, MaxCount, Options )` :
-	Returns all documents satisfying `Criteria`, optionally sorted and/or limited.
+- `FindMany2( Criteria, Projection, Sort, Paging, Options )` :
+	Returns all documents satisfying `Criteria`, optionally sorted and paged: `Paging` is an integer `MaxCount` or `{ SkipCount, MaxCount }`.
 - `UpdateOne( Criteria, Updates, Options )` :
 	Updates the first document satisfying `Criteria` with update operations found in `Updates`.
 - `UpdateMany( Criteria, Updates, Options )` :

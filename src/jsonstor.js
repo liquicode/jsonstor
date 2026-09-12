@@ -9,6 +9,11 @@ const jsongin = require( '@liquicode/jsongin' );
 // is built once here rather than per instance. See src/jsonstor/Statistics.js.
 const STATISTICS = require( './jsonstor/Statistics' )();
 
+// ***A criteria the engine refuses is refused by every storage***, before a translator can
+// claim an exact answer for it or an empty collection can answer nothing. See
+// src/jsonstor/CriteriaCheck.js.
+const CRITERIA_CHECK = require( './jsonstor/CriteriaCheck' )();
+
 
 //---------------------------------------------------------------------
 // ***Compares two version arrays, shortest-first and element by element.***
@@ -271,6 +276,9 @@ module.exports = function ( AdapterName, Settings, Filters )
 			// private collector forwarded in its place, which is what keeps every filter and
 			// the adapter beneath returning the value they always returned.
 			STATISTICS.Wrap( storage, AdapterName );
+			// ***Outermost of all***, so a refused criteria is measured by nothing and reaches
+			// no filter and no server.
+			CRITERIA_CHECK.Wrap( storage );
 			return storage;
 		},
 
@@ -288,6 +296,7 @@ module.exports = function ( AdapterName, Settings, Filters )
 			// here never passed through GetStorage, so without this a filtered storage would
 			// accept Options.Statistics and silently answer without any.
 			STATISTICS.Wrap( storage, ( Storage && Storage.AdapterName ) || '' );
+			CRITERIA_CHECK.Wrap( storage );
 			return storage;
 		},
 
@@ -329,6 +338,10 @@ module.exports = function ( AdapterName, Settings, Filters )
 				InsertMany: async function ( Documents, Options ) { throw new Error( 'InsertMany is not implemeted.' ); },
 				FindOne: async function ( Criteria, Projection, Options ) { throw new Error( 'FindOne is not implemeted.' ); },
 				FindMany: async function ( Criteria, Projection, Options ) { throw new Error( 'FindMany is not implemeted.' ); },
+				// ***The fifteenth method, and it was missing from this list while every adapter
+				// implemented it.*** Statistics.js and CriteriaCheck.js each had to say so in a comment.
+				// Paging is an integer MaxCount or { SkipCount, MaxCount }; see jsonstor/Paging.js.
+				FindMany2: async function ( Criteria, Projection, Sort, Paging, Options ) { throw new Error( 'FindMany2 is not implemented.' ); },
 				UpdateOne: async function ( Criteria, Updates, Options ) { throw new Error( 'UpdateOne is not implemeted.' ); },
 				UpdateMany: async function ( Criteria, Updates, Options ) { throw new Error( 'UpdateMany is not implemeted.' ); },
 				ReplaceOne: async function ( Criteria, Document, Options ) { throw new Error( 'ReplaceOne is not implemeted.' ); },
@@ -602,6 +615,11 @@ module.exports = function ( AdapterName, Settings, Filters )
 	// external adapters reach it - they are separate packages and `../jsonstor/PrimaryKey` is
 	// not a path any of them has. See jsonx/.plans/primary-keys-and-indexes.md.
 	jsonstor.PrimaryKey = require( './jsonstor/PrimaryKey' )();
+
+	// ***The page FindMany2 takes: an integer MaxCount, or { SkipCount, MaxCount }.*** Read in
+	// one place so that sixteen adapters agree on what zero means. The built-ins require the
+	// module directly; the external adapters reach it here, as they reach PrimaryKey.
+	jsonstor.Paging = require( './jsonstor/Paging' )();
 
 	// ***The target-agnostic half of a translator, for whoever writes the next one.***
 	// The criteria-shape and allowlist questions, with no target in them. See the module.

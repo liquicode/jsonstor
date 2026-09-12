@@ -33,6 +33,12 @@ declare module '@liquicode/jsonstor'
 	/** A MongoDB style query criteria, as jsongin evaluates it. */
 	export type QueryCriteria = { [ Key: string ]: any };
 
+	/**
+	 * The page FindMany2 reads: an integer MaxCount, or { SkipCount, MaxCount }. Zero, null and
+	 * undefined mean no skip and no limit. Anything else is refused before a server sees it.
+	 */
+	export type Paging = number | { SkipCount?: number; MaxCount?: number };
+
 	export interface LibraryInfo
 	{
 		name: string;
@@ -102,8 +108,8 @@ declare module '@liquicode/jsonstor'
 		ReplaceOne( Criteria: QueryCriteria, Document: JsonDocument, Options?: JsonDocument ): Promise<any>;
 		DeleteOne( Criteria: QueryCriteria, Options?: JsonDocument ): Promise<any>;
 		DeleteMany( Criteria?: QueryCriteria, Options?: JsonDocument ): Promise<any>;
-		/** FindMany, with a sort and a maximum applied by the storage. */
-		FindMany2( Criteria?: QueryCriteria, Projection?: JsonDocument, Sort?: JsonDocument, MaxCount?: number, Options?: JsonDocument ): Promise<any>;
+		/** FindMany, with a sort and a page applied by the storage: the sort first, then SkipCount passed over, then at most MaxCount read. */
+		FindMany2( Criteria?: QueryCriteria, Projection?: JsonDocument, Sort?: JsonDocument, Paging?: Paging | null, Options?: JsonDocument ): Promise<any>;
 
 		/**
 		 * What this storage is actually talking to: the name asked for, the dialect in force,
@@ -259,6 +265,15 @@ declare module '@liquicode/jsonstor'
 
 	//---------------------------------------------------------------------
 	// The shared key encoding and index, as an adapter sees it.
+
+	/** The one place both forms of Paging are read. An adapter which pushes the page down calls Normalize; one which sorts in process calls Apply. */
+	export interface PagingHelper
+	{
+		/** Every accepted form reduced to { SkipCount, MaxCount }; throws, naming the field, for anything else. */
+		Normalize( Paging?: Paging | null ): { SkipCount: number; MaxCount: number };
+		/** The page of an already-sorted array. Answers the array itself when there is nothing to do. */
+		Apply( Documents: JsonDocument[], Paging?: Paging | null ): JsonDocument[];
+	}
 
 	export interface PrimaryKeyHelper
 	{
@@ -430,7 +445,7 @@ declare module '@liquicode/jsonstor'
 		GetStorage( AdapterName: string, Settings?: JsonDocument | null, Filters?: FilterEntry[] ): Storage;
 		/** Wraps an existing storage in one registered filter. */
 		GetFilter( FilterName: string, Storage: Storage, Settings?: JsonDocument | null ): Storage;
-		/** The fourteen interface functions as stubs which throw. What an adapter starts from. */
+		/** The fifteen interface functions as stubs which throw. What an adapter starts from. */
 		StorageInterface(): Storage;
 
 		/**
@@ -440,6 +455,9 @@ declare module '@liquicode/jsonstor'
 		 * packages, so `../jsonstor/PrimaryKey` is not a path any of them has.
 		 */
 		PrimaryKey: PrimaryKeyHelper;
+
+		/** The page FindMany2 takes, read in one place so that every adapter agrees on what zero means. */
+		Paging: PagingHelper;
 
 		/** The built-in SQL criteria translator. Also reachable as `Translators.SqlExpression`. */
 		SqlExpression: CriteriaTranslatorPlugin;

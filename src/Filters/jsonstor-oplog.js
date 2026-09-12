@@ -203,7 +203,7 @@ module.exports = {
 		Filter.ReplaceOne = async function ( Criteria, Document, Options ) { return await call_function( 'ReplaceOne', [ 'Criteria', 'Document', 'Options' ], [ Criteria, Document, Options ] ); };
 		Filter.DeleteOne = async function ( Criteria, Options ) { return await call_function( 'DeleteOne', [ 'Criteria', 'Options' ], [ Criteria, Options ] ); };
 		Filter.DeleteMany = async function ( Criteria, Options ) { return await call_function( 'DeleteMany', [ 'Criteria', 'Options' ], [ Criteria, Options ] ); };
-		Filter.FindMany2 = async function ( Criteria, Projection, Sort, MaxCount, Options ) { return await call_function( 'FindMany2', [ 'Criteria', 'Projection', 'Sort', 'MaxCount', 'Options' ], [ Criteria, Projection, Sort, MaxCount, Options ] ); };
+		Filter.FindMany2 = async function ( Criteria, Projection, Sort, Paging, Options ) { return await call_function( 'FindMany2', [ 'Criteria', 'Projection', 'Sort', 'Paging', 'Options' ], [ Criteria, Projection, Sort, Paging, Options ] ); };
 
 		// ***The two which ask about the storage rather than about the documents in it.***
 		//

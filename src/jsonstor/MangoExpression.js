@@ -189,6 +189,11 @@ module.exports = function ( jsonstor )
 		if ( options.ExcludesMissingFields !== true ) { return false; }
 		// A negation is one whatever it is given, so its name settles it.
 		if ( NEGATION_OPERATORS[ Name ] === true ) { return true; }
+		// ***`$exists: false` is the absence test itself, and the target answers it only for a
+		// field its parent object lacks.*** Through a scalar, a null or an array at a prefix it
+		// is false - measured on CouchDB 2.3.1 and 3.5.2, 2026-09-12 - so on a dotted path it is
+		// rendered as the negation of `$exists: true`, prefix by prefix, like every other one.
+		if ( ( Name === '$exists' ) && ( Operand === false ) ) { return true; }
 		// ***The rest is asked of the operand rather than of the name.*** An equality, a
 		// comparison or an $in which mentions null is asking about a value a document without
 		// the field also has, so a target which answers only over the documents holding the
@@ -227,13 +232,42 @@ module.exports = function ( jsonstor )
 	// ***A comparison reaches an array's elements in jsongin exactly as an equality does***,
 	// and this asked only about $eq until 2026-09-03. Measured on both CouchDB servers: a $lt
 	// against a field holding an array is kept by jsongin and dropped by the server, and the
-	// $elemMatch offered beside it agrees again. ***$in is deliberately absent*** - measured on
-	// the same corpus, CouchDB's own $in reaches an array's elements, so a repair there would
-	// be a widening nothing asked for.
-	function condition_needs_element_test( Name, options )
+	// $elemMatch offered beside it agrees again.
+	//
+	// ***$in, $mod and $exists joined on 2026-09-12***, measured on both CouchDB servers over
+	// the parity corpus. $in was left out on the ground that CouchDB's own $in reaches an
+	// array's elements - which is true at the leaf and false at a prefix: `{ 'a.b': { $in:
+	// [ 1 ] } }` lost `{ a: [ { b: 1 } ] }`, because the path through the array never
+	// resolves. $mod and `$exists: true` lose the same document for the same reason. Every
+	// operator which compares a value along a path needs the branches, and the leaf-level
+	// behaviour of $in is a separate fact handled in relative_conditions.
+	function condition_needs_element_test( Name, Operand, options, FieldName )
 	{
 		if ( options.ExcludesArrayElements !== true ) { return false; }
-		return ( ( Name === '$eq' ) || ( RANGE_OPERATORS[ Name ] === true ) );
+		if ( ( Name === '$eq' ) || ( RANGE_OPERATORS[ Name ] === true ) ) { return true; }
+		if ( Name === '$mod' ) { return true; }
+		// `$in` reaches a plain field's elements by itself on such a target; it needs the
+		// prefix branches on a path, and the whole-array equality for an array member anywhere.
+		if ( Name === '$in' )
+		{
+			if ( ( typeof FieldName === 'string' ) && ( FieldName.indexOf( '.' ) >= 0 ) ) { return true; }
+			return ( relative_conditions( Name, Operand, options ).length > 1 );
+		}
+		// `$exists: false` is the absence question and has its own rendering; only the
+		// positive form asks the elements, and only on a path - a plain field exists whatever
+		// it holds, so there the target already answers exactly. Asked without a field name,
+		// as the exactness walk asks, a plain field is assumed; the walk checks a path itself.
+		if ( ( Name === '$exists' ) && ( Operand === true ) )
+		{
+			return ( ( typeof FieldName === 'string' ) && ( FieldName.indexOf( '.' ) >= 0 ) );
+		}
+		// `$size` counts the leaf alone, which a plain field already is; on a path it needs the
+		// prefix branches, and element_branches leaves the leaf one out for it.
+		if ( Name === '$size' )
+		{
+			return ( ( typeof FieldName === 'string' ) && ( FieldName.indexOf( '.' ) >= 0 ) );
+		}
+		return false;
 	}
 
 
@@ -274,18 +308,25 @@ module.exports = function ( jsonstor )
 	// equality and never narrows for a comparison. Both servers agreed.
 	//
 	// The returned branches do not include the plain path itself; widened_repair carries that.
-	function element_branches( FieldName, Conditions )
+	//
+	// ***LeafToo says whether the leaf itself may be the array asked about.*** True for every
+	// comparison, which reaches an array's elements; false for `$size`, which counts the leaf
+	// alone - `{ a: [ [ 1, 2 ] ] }` has one element, not two, in MongoDB and jsongin both -
+	// so a `$size` on a path takes the prefix branches and never the leaf one. Measured on
+	// both CouchDB servers 2026-09-12.
+	function element_branches( FieldName, Conditions, LeafToo )
 	{
 		let segments = String( FieldName ).split( '.' );
 		// The leaf itself may hold the array, whatever else the path does.
-		let branches = [ one_field( FieldName, { $elemMatch: Conditions } ) ];
+		let branches = [];
+		if ( LeafToo !== false ) { branches.push( one_field( FieldName, { $elemMatch: Conditions } ) ); }
 		for ( let index = 1; index < segments.length; index++ )
 		{
 			let head = segments.slice( 0, index ).join( '.' );
 			let tail = segments.slice( index ).join( '.' );
 			// ***Relative to the element***, so the rest of the path is asked without its head -
 			// and an adapter mapping field names never reaches inside an operator's operand.
-			let rest = [ one_field( tail, Conditions ) ].concat( element_branches( tail, Conditions ) );
+			let rest = [ one_field( tail, Conditions ) ].concat( element_branches( tail, Conditions, LeafToo ) );
 			for ( let r = 0; r < rest.length; r++ )
 			{
 				branches.push( one_field( head, { $elemMatch: rest[ r ] } ) );
@@ -301,42 +342,289 @@ module.exports = function ( jsonstor )
 	// ***Asked of the object rather than of $eq***, because the comparisons need the test too
 	// and a field carrying a $lt on a dotted path is the same unrepairable shape as one
 	// carrying an $eq.
-	function operator_object_needs_element_test( Operators, options )
+	function operator_object_needs_element_test( Operators, options, FieldName )
 	{
 		for ( let key in Operators )
 		{
-			if ( condition_needs_element_test( key, options ) ) { return true; }
+			if ( condition_needs_element_test( key, Operators[ key ], options, FieldName ) ) { return true; }
 		}
 		return false;
 	}
 
 
 	//---------------------------------------------------------------------
-	// ***One widening, carrying whichever second questions this condition needs.***
-	//
-	// ***Both repairs are the same move*** - ask the operand a second way beside the first, so
-	// that the pushdown survives instead of falling to the residual - and a condition can need
-	// both at once, which is why they are assembled here rather than in two places.
-	//
-	// Measured on CouchDB 2.3.1 and 3.5.2:
-	//   absence   $ne, $nin, $not, $eq null and the implicit null form, 2026-09-02
-	//   element   $eq and the implicit form against an array field, 2026-09-03
-	//
-	// ***This is the jsonb array repair one layer up***, which is where the shape came from.
-	function widened_repair( Name, Conditions, NeedsAbsence, NeedsElement )
+	/*
+		***The widenings, and the rule of the target they are built for.***
+
+		Both repairs are the same move - ask the operand a second way beside the first, so that
+		the pushdown survives instead of falling to the residual. Until 2026-09-12 the absence
+		repair was one branch, `{ path: { $exists: false } }`, beside the condition. That is
+		exact for a plain field and loses rows on a dotted path, and the parity corpus found it
+		losing 26 documents of 32 for `{ 'a.b': { $ne: 1 } }`.
+
+		***The rule, measured on CouchDB 2.3.1 and 3.5.2 over the parity corpus, both agreeing
+		on every cell:*** a field condition is false whenever the path does not resolve - a
+		scalar, a null or an array at any prefix - with one exception, `$exists: false` on a
+		field its parent object lacks. `$not` is pushed down to the field and inherits the rule,
+		so it is not a complement and cannot be used as one; rendered over the positive branches
+		it lost more than the one-branch repair did (run file `mango-narrowing-2026-09-12.txt`).
+
+		***So every widening is built from positive field conditions, prefix by prefix.*** What
+		works, and is used below: `{ q: { $not: { $type: 'object' } } }` is true for a present
+		non-object; `{ q: { $not: { $elemMatch: X } } }` is true when no element of q matches X,
+		and for a non-array q as well; `{ q: { $elemMatch: { leaf: { $exists: false } } } }`
+		finds an object element lacking the leaf and never a scalar element; `$eq` compares a
+		whole array where `$in` compares its elements; and `$size` counts an array's elements
+		whatever they hold.
+
+		Three renderings, one per question the engine asks:
+
+		  positive      some branch of the path satisfies the condition - the leaf, the leaf as
+		                an array, an array at every prefix. Exact.
+		  negation      no branch satisfies it: the leaf resolves and does not, or a prefix is
+		                not an object and none of its elements yields it. `$ne`, `$nin`, `$not`
+		                and `$exists: false` (the negation of `$exists: true`). Exact.
+		  null miss     what a null equality matches beside null itself: an object along the
+		                path lacks the field, or a scalar sits at a prefix. An array yielding
+		                nothing is not a miss, and a scalar reached by an index into an array is
+		                not one either - both the engine's answers. Exact.
+
+		A numeric segment names an index into an array and a field of an object element both,
+		as MongoDB reads it, so a prefix followed by one carries an index branch guarded by
+		`$size`. The branch count grows with the depth, which MAX_ELEMENT_REPAIR_SEGMENTS
+		bounds; `a.b $ne 1` is some 250 characters and `a.0.b $ne 1` some 850.
+
+		Measured by `.plans/tools/mango-narrowing-probe.js`, run files in `~runs/`.
+	*/
+
+
+	//---------------------------------------------------------------------
+	function one_condition( Name, Operand )
 	{
-		let branches = [ one_field( Name, Conditions ) ];
-		if ( NeedsAbsence ) { branches.push( one_field( Name, { $exists: false } ) ); }
-		// $elemMatch asks the same conditions of each element, which is exactly the question
-		// MongoDB answers implicitly and this target does not. One branch for a plain field, and
-		// one per place an array can sit when the field is a path.
-		if ( NeedsElement ) { branches = branches.concat( element_branches( Name, Conditions ) ); }
+		let condition = {};
+		condition[ Name ] = Operand;
+		return condition;
+	}
+
+
+	//---------------------------------------------------------------------
+	function is_numeric_segment( Segment )
+	{
+		return /^\d+$/.test( Segment );
+	}
+
+
+	//---------------------------------------------------------------------
+	// A number is fractional exactly when it is a number and `$mod: [ 1, 0 ]` is false of it.
+	const FRACTIONAL = { $and: [ { $type: 'number' }, { $not: { $mod: [ 1, 0 ] } } ] };
+
+
+	//---------------------------------------------------------------------
+	// ***The conditions one criteria condition asks of a value***, relative to that value, so
+	// they can be placed on the leaf or inside an $elemMatch alike.
+	//
+	// ***An $in holding an array member also asks the whole-array equality.*** CouchDB's $in
+	// compares an array field's elements and never the array itself, so `{ $in: [ [] ] }`
+	// lost `{ a: [] }`; MongoDB compares both, and for it the extra branch is a subset of the
+	// first. Measured 2026-09-12.
+	//
+	// ***A $mod on a target which answers it for integers only*** asks the condition or a
+	// fractional number, which the residual then decides - the engine truncates the value and
+	// the target cannot.
+	function relative_conditions( Name, Operand, options )
+	{
+		// A user's $not carries an operator object, and that object is the condition.
+		if ( Name === '$not' ) { return [ Operand ]; }
+		let conditions = [ one_condition( Name, Operand ) ];
+		if ( ( Name === '$in' ) && ( options.ExcludesArrayElements === true ) && ( jsongin.ShortType( Operand ) === 'a' ) )
+		{
+			for ( let index = 0; index < Operand.length; index++ )
+			{
+				if ( jsongin.ShortType( Operand[ index ] ) === 'a' ) { conditions.push( { $eq: Operand[ index ] } ); }
+			}
+		}
+		if ( ( Name === '$mod' ) && ( options.ModMatchesIntegersOnly === true ) )
+		{
+			conditions = [ { $or: [ conditions[ 0 ], FRACTIONAL ] } ];
+		}
+		return conditions;
+	}
+
+
+	//---------------------------------------------------------------------
+	// The same conditions placed on the leaf. The fractional branch of a $mod is written as
+	// two field conditions under $and, which is the shape measured; a field-level $or was not.
+	function leaf_selectors( FieldName, Name, Operand, options )
+	{
+		if ( ( Name === '$mod' ) && ( options.ModMatchesIntegersOnly === true ) )
+		{
+			return [
+				one_field( FieldName, one_condition( Name, Operand ) ),
+				{ $and: [ one_field( FieldName, { $type: 'number' } ), one_field( FieldName, { $not: { $mod: [ 1, 0 ] } } ) ] },
+			];
+		}
+		let conditions = relative_conditions( Name, Operand, options );
+		let selectors = [];
+		for ( let index = 0; index < conditions.length; index++ ) { selectors.push( one_field( FieldName, conditions[ index ] ) ); }
+		return selectors;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***Whether the leaf is asked as an array beside being asked as a value.*** Not for
+	// `$size`, which counts the leaf alone; and not for `$in` on a target which excludes
+	// elements, because CouchDB's own `$in` reaches the leaf's elements already - asked through
+	// `$elemMatch` as well it reaches a nested array's elements, one level further than
+	// MongoDB, which is a broadening on the positive and a narrowing inside the negation:
+	// `{ a: { b: [ [ 1, 2 ] ] } }` was lost by `{ 'a.b': { $nin: [ 1 ] } }`. Found by the fleet
+	// probe 2026-09-12 the moment such a document joined the corpus.
+	function leaf_may_be_array( Name, options )
+	{
+		if ( Name === '$size' ) { return false; }
+		if ( ( Name === '$in' ) && ( options.ExcludesArrayElements === true ) ) { return false; }
+		return true;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***Some branch of the path satisfies the condition.*** The leaf as it stands, then -
+	// for a target without implicit element matching - the leaf as an array and an array at
+	// every prefix, which is exactly the question MongoDB answers implicitly.
+	function positive( FieldName, Name, Operand, options, NeedsElement )
+	{
+		let branches = leaf_selectors( FieldName, Name, Operand, options );
+		if ( NeedsElement )
+		{
+			let conditions = relative_conditions( Name, Operand, options );
+			for ( let index = 0; index < conditions.length; index++ )
+			{
+				branches = branches.concat( element_branches( FieldName, conditions[ index ], leaf_may_be_array( Name, options ) ) );
+			}
+		}
 		return { $or: branches };
 	}
 
 
 	//---------------------------------------------------------------------
-	// ***The implicit form written out.*** `{ n: 5 }` becomes `{ n: { $eq: 5 } }`.
+	// The array is no longer than the index asks for.
+	function size_at_most( FieldName, Index )
+	{
+		let branches = [];
+		for ( let size = 0; size <= Index; size++ ) { branches.push( one_field( FieldName, { $size: size } ) ); }
+		return { $or: branches };
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***No branch of the path satisfies the condition.*** The leaf resolves and does not -
+	// as a value and as an array of values - or some prefix from Start on is not an object and
+	// none of its elements yields the rest; and the field may be missing outright, which is
+	// the one absence the target answers by itself.
+	//
+	// The condition is the positive one being negated: `$eq` for `$ne`, `$in` for `$nin`,
+	// `$exists: true` for `$exists: false`, and the operand itself for `$not`.
+	function negation( Segments, Start, Name, Operand, options )
+	{
+		let path = Segments.join( '.' );
+		let branches = [ one_field( path, { $exists: false } ) ];
+		let leaf = [];
+		let conditions = relative_conditions( Name, Operand, options );
+		for ( let index = 0; index < conditions.length; index++ )
+		{
+			leaf.push( one_field( path, { $not: conditions[ index ] } ) );
+			// The `$in` condition reaches the leaf's elements by itself; its whole-array `$eq`
+			// members are asked of the elements here, like any other condition.
+			let name = Object.keys( conditions[ index ] )[ 0 ];
+			if ( leaf_may_be_array( name, options ) ) { leaf.push( one_field( path, { $not: { $elemMatch: conditions[ index ] } } ) ); }
+		}
+		branches.push( { $and: leaf } );
+		for ( let at = Start; at < Segments.length; at++ )
+		{
+			let prefix = Segments.slice( 0, at ).join( '.' );
+			let rest = Segments.slice( at );
+			let numeric = is_numeric_segment( rest[ 0 ] );
+			// An element yields the rest when the rest, relative to it, has a satisfying branch.
+			let through = positive( rest.join( '.' ), Name, Operand, options, true );
+			// A numeric segment reads an object element's field of that name, never a nested
+			// array's index, which is the index branch's business.
+			if ( numeric ) { through = { $and: [ { $type: 'object' }, through ] }; }
+			let clause = [
+				one_field( prefix, { $not: { $type: 'object' } } ),
+				one_field( prefix, { $not: { $elemMatch: through } } ),
+			];
+			if ( numeric )
+			{
+				// The index branch, asked of an array only: it is too short to hold the index,
+				// or the rest through the indexed element yields nothing.
+				clause.push( { $or: [
+					one_field( prefix, { $not: { $type: 'array' } } ),
+					size_at_most( prefix, Number( rest[ 0 ] ) ),
+					negation( Segments, at + 1, Name, Operand, options ),
+				] } );
+			}
+			branches.push( { $and: clause } );
+		}
+		return { $or: branches };
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***An object along the path lacks the field, or a scalar sits at a prefix.*** What a null
+	// equality matches beside null itself. An array yielding nothing is not a miss, and a
+	// scalar reached by an index into an array is not one either - the engine's answers, and
+	// the second is why a numeric prefix asks that its parent be an object.
+	function null_miss( Segments, Start )
+	{
+		let path = Segments.join( '.' );
+		let branches = [ one_field( path, { $exists: false } ) ];
+		for ( let at = Start; at < Segments.length; at++ )
+		{
+			let prefix = Segments.slice( 0, at ).join( '.' );
+			let rest = Segments.slice( at );
+			let scalar = [ one_field( prefix, { $not: { $type: 'object' } } ), one_field( prefix, { $not: { $type: 'array' } } ) ];
+			if ( ( at > 1 ) && is_numeric_segment( Segments[ at - 1 ] ) )
+			{
+				scalar.push( one_field( Segments.slice( 0, at - 1 ).join( '.' ), { $type: 'object' } ) );
+			}
+			branches.push( { $and: scalar } );
+			// An object element which misses the rest.
+			let inner = null_miss( rest, 1 );
+			if ( is_numeric_segment( rest[ 0 ] ) ) { inner = { $and: [ { $type: 'object' }, inner ] }; }
+			branches.push( one_field( prefix, { $elemMatch: inner } ) );
+		}
+		return { $or: branches };
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***One condition, widened as it needs.*** A negation is rendered as the negation of its
+	// positive; a condition which asks about null is its positive beside the null miss; a
+	// condition which needs only the element test is its positive alone.
+	function widened_condition( FieldName, Name, Operand, NeedsAbsence, NeedsElement, options )
+	{
+		let segments = String( FieldName ).split( '.' );
+		if ( NeedsAbsence )
+		{
+			if ( Name === '$ne' ) { return negation( segments, 1, '$eq', Operand, options ); }
+			if ( Name === '$nin' ) { return negation( segments, 1, '$in', Operand, options ); }
+			if ( Name === '$not' ) { return negation( segments, 1, '$not', Operand, options ); }
+			// `$exists: false` on a plain field is the one absence the target answers by itself,
+			// and is rendered as it was written; on a path it is the negation of `$exists: true`.
+			if ( Name === '$exists' )
+			{
+				if ( segments.length === 1 ) { return one_field( FieldName, { $exists: false } ); }
+				return negation( segments, 1, '$exists', true, options );
+			}
+			// An equality, a comparison or an $in which mentions null.
+			return { $or: [ positive( FieldName, Name, Operand, options, NeedsElement ), null_miss( segments, 1 ) ] };
+		}
+		return positive( FieldName, Name, Operand, options, NeedsElement );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The implicit form is written out when it is widened.*** `{ n: 5 }` becomes
+	// `{ n: { $eq: 5 } }` on its way through widened_condition.
 	//
 	// ***Only safe for an operand which is not a regular expression.*** MongoDB's implicit
 	// form differs from $eq in exactly two places, and one of them is that a regexp value
@@ -348,10 +636,6 @@ module.exports = function ( jsonstor )
 	// takes a conditions object and a bare value is not one. It is also an improvement on its
 	// own: measured 2026-09-03, `{ o: { n: 3.14 } }` reaches CouchDB as a sub-selector and
 	// broadens, while `{ o: { $eq: { n: 3.14 } } }` is exact on both servers.
-	function explicit_equality( Value )
-	{
-		return { $eq: Value };
-	}
 
 
 	//---------------------------------------------------------------------
@@ -377,6 +661,13 @@ module.exports = function ( jsonstor )
 		// target answers an equality the way MongoDB does, which is what MongoDB does.
 		if ( options.ExcludesArrayElements !== true ) { options.ExcludesArrayElements = false; }
 
+		// ***And for a target whose $mod answers for integers only.*** jsongin and MongoDB
+		// truncate the field's value before dividing, so 11.5 satisfies `$mod: [ 5, 1 ]`;
+		// CouchDB answers false for any fractional value. Measured on both servers 2026-09-12.
+		// Declaring it lowers $mod to broadening, because the rendering offers every fractional
+		// number to the residual - one flag, and the fidelity follows from it.
+		if ( options.ModMatchesIntegersOnly !== true ) { options.ModMatchesIntegersOnly = false; }
+
 		let fidelities = {};
 		for ( let name in FIDELITIES )
 		{
@@ -386,6 +677,7 @@ module.exports = function ( jsonstor )
 			else if ( FIDELITY_RANK[ declared ] > FIDELITY_RANK[ ceiling ] ) { fidelities[ name ] = declared; }
 			else { fidelities[ name ] = ceiling; }
 		}
+		if ( options.ModMatchesIntegersOnly && ( fidelities[ '$mod' ] === 'exact' ) ) { fidelities[ '$mod' ] = 'broadening'; }
 		options.Fidelities = fidelities;
 		return options;
 	}
@@ -512,17 +804,18 @@ module.exports = function ( jsonstor )
 				// would be copied verbatim and would lose the documents which lack the field,
 				// or the documents whose field holds the value inside an array.
 				if ( condition_needs_absence_test( key, Node[ key ], options ) && ( AllowRepair !== true ) ) { return false; }
-				if ( condition_needs_element_test( key, options ) && ( AllowRepair !== true ) ) { return false; }
+				if ( condition_needs_element_test( key, Node[ key ], options ) && ( AllowRepair !== true ) ) { return false; }
 			}
 			else if ( SUPPORT.IsOperatorObject( Node[ key ] )
-				&& !field_allows_element_test( key )
-				&& operator_object_needs_element_test( Node[ key ], options ) )
+				&& ( ( AllowRepair !== true ) || !field_allows_element_test( key ) )
+				&& operator_object_needs_element_test( Node[ key ], options, key ) )
 			{
 				// ***The explicit form of the same thing, one level down.*** The field name is
 				// this key and the condition sits inside its operator object, so the check has
 				// to happen here - the recursion below sees `$eq` or `$lt` without ever seeing
 				// the path it belongs to, and a path too deep to repair is where the repair has
-				// nowhere to go.
+				// nowhere to go. Asked with the key, because `$exists: true` needs the repair
+				// on a path and not on a plain field, which the recursion could not tell apart.
 				return false;
 			}
 			else if ( !SUPPORT.IsOperatorObject( Node[ key ] ) )
@@ -539,7 +832,7 @@ module.exports = function ( jsonstor )
 				// ***The implicit equality needs the element test wherever an equality does***,
 				// and a regexp operand is not an equality at all - neither can be rendered
 				// where the repair does not fit.
-				if ( condition_needs_element_test( '$eq', options ) )
+				if ( condition_needs_element_test( '$eq', Node[ key ], options ) )
 				{
 					if ( AllowRepair !== true ) { return false; }
 					if ( jsongin.ShortType( Node[ key ] ) === 'r' ) { return false; }
@@ -620,12 +913,11 @@ module.exports = function ( jsonstor )
 			{
 				let split = push_field_conditions( key, value, options );
 				if ( Object.keys( split.Conditions ).length ) { pushdown[ key ] = split.Conditions; }
-				// ***The conditions needing a widening travel separately***, one $or per kind
-				// of widening they need.
-				for ( let signature in split.Widened )
+				// ***The conditions needing a widening travel separately***, one $or each.
+				for ( let index = 0; index < split.Widened.length; index++ )
 				{
-					let group = split.Widened[ signature ];
-					repairs.push( widened_repair( key, group.Conditions, group.Absence, group.Element ) );
+					let widened = split.Widened[ index ];
+					repairs.push( widened_condition( key, widened.Name, widened.Operand, widened.Absence, widened.Element, options ) );
 				}
 				continue;
 			}
@@ -642,22 +934,21 @@ module.exports = function ( jsonstor )
 			// The implicit form of the same thing: `{ n: null }` reads as an equality, and
 			// `{ tags: 'B' }` is the equality which has to reach an array's elements.
 			let implicit_absence = condition_needs_absence_test( '$eq', value, options );
-			let implicit_element = condition_needs_element_test( '$eq', options );
+			let implicit_element = condition_needs_element_test( '$eq', value, options );
 
 			// ***A regexp value pattern is the one implicit operand which is not an
 			// equality***, so it is never rewritten and never repaired. Left out rather than
 			// rendered, because neither repair below would mean what it says.
 			if ( implicit_element && ( jsongin.ShortType( value ) === 'r' ) ) { continue; }
 			// And a path deeper than the repair is rendered for is left to the residual.
-			if ( implicit_element && !field_allows_element_test( key ) ) { continue; }
+			if ( ( implicit_absence || implicit_element ) && !field_allows_element_test( key ) ) { continue; }
 
 			if ( implicit_absence || implicit_element )
 			{
-				// Written out, because $elemMatch takes a conditions object and a bare value
-				// is not one - and because the explicit form is the more exact of the two
-				// against an object operand.
-				let conditions = implicit_element ? explicit_equality( value ) : value;
-				repairs.push( widened_repair( key, conditions, implicit_absence, implicit_element ) );
+				// Written out as $eq, because $elemMatch takes a conditions object and a bare
+				// value is not one - and because the explicit form is the more exact of the two
+				// against an object operand. See explicit_equality.
+				repairs.push( widened_condition( key, '$eq', value, implicit_absence, implicit_element, options ) );
 				continue;
 			}
 			pushdown[ key ] = value;
@@ -679,18 +970,23 @@ module.exports = function ( jsonstor )
 	//---------------------------------------------------------------------
 	// Prunes the operator object on one field. `{ $gt: 1, $eqx: 2 }` is an AND of two
 	// conditions on that field, so keeping the first and leaving out the second broadens it.
-	// ***Returns two objects rather than one.*** Conditions render against the field as they
-	// always have; AbsenceConditions are the ones which need the field's absence offered
-	// beside them, and are empty unless the adapter asked for that.
-	// ***Returns one plain bucket and a bucket per kind of widening.*** A condition can need
-	// the absence test, the element test, or both, and conditions needing the same pair are
-	// rendered under one $or - so a field carrying `$gt: 1` and `$ne: 5` keeps the first as an
-	// ordinary condition and widens only the second.
+	// ***Returns one plain bucket and a list of conditions to widen.*** Conditions render
+	// against the field as they always have; a condition which needs the absence test, the
+	// element test, or both is rendered on its own by widened_condition - so a field carrying
+	// `$gt: 1` and `$ne: 5` keeps the first as an ordinary condition and widens only the
+	// second.
+	//
+	// ***One widening carrying two comparisons is not the same question as two widenings.***
+	// `{ dim: { $gt: 15, $lt: 20 } }` matches in jsongin when one element of an array
+	// satisfies each condition and no element satisfies both, and an $elemMatch carrying the
+	// pair demands a single element satisfy both - ***narrower than what was asked.*** So every
+	// widened condition is rendered alone. ***Found by the shared inventory on 2026-09-03***,
+	// where it is MongoDB's own tutorial: *Query an Array with Compound Filter Conditions on
+	// the Array Elements*.
 	function push_field_conditions( FieldName, Operators, options )
 	{
 		let conditions = {};
-		// Keyed by which repairs the conditions in it need: 'A', 'E' or 'AE'.
-		let widened = {};
+		let widened = [];
 		for ( let key in Operators )
 		{
 			if ( key === '$options' ) { continue; }
@@ -702,37 +998,34 @@ module.exports = function ( jsonstor )
 			if ( !condition_allows_operand( key, Operators[ key ], options ) ) { continue; }
 			if ( !subtree_is_exact( Operators[ key ], options, false ) ) { continue; }
 
-			let needs_absence = condition_needs_absence_test( key, Operators[ key ], options );
-			let needs_element = condition_needs_element_test( key, options );
-			// A path deeper than the repair is rendered for is left out of the pushdown.
-			if ( needs_element && !field_allows_element_test( FieldName ) ) { continue; }
-
-			let target = conditions;
-			if ( needs_absence || needs_element )
+			let operand = Operators[ key ];
+			// ***A `$mod` operand travels truncated.*** jsongin and MongoDB both read
+			// `[ 5.5, 1 ]` as `[ 5, 1 ]`, so MongoDB answers the same either way - but CouchDB
+			// refuses a fractional operand outright (`bad_arg`, measured on 2.3.1 and 3.5 on
+			// 2026-09-12), which turned a criteria the engine answers into an error from the
+			// adapter. Handing over what the engine actually asks keeps both servers exact.
+			if ( ( key === '$mod' ) && ( jsongin.ShortType( operand ) === 'a' ) && ( operand.length === 2 )
+				&& ( jsongin.ShortType( operand[ 0 ] ) === 'n' ) && ( jsongin.ShortType( operand[ 1 ] ) === 'n' ) )
 			{
-				// ***One widening carrying two comparisons is not the same question as two
-				// widenings.*** `{ dim: { $gt: 15, $lt: 20 } }` matches in jsongin when one element
-				// of an array satisfies each condition and no element satisfies both, and an
-				// $elemMatch carrying the pair demands a single element satisfy both - ***narrower
-				// than what was asked.*** So a condition needing the element test is widened alone,
-				// and only conditions needing the absence test may share a branch, because a
-				// missing field satisfies every one of them at once.
-				//
-				// ***Found by the shared inventory on 2026-09-03***, where it is MongoDB's own
-				// tutorial: *Query an Array with Compound Filter Conditions on the Array Elements*.
-				let signature = needs_element ? `E ${key}` : 'A';
-				if ( typeof widened[ signature ] === 'undefined' )
-				{
-					widened[ signature ] = { Absence: needs_absence, Element: needs_element, Conditions: {} };
-				}
-				target = widened[ signature ].Conditions;
+				operand = [ Math.trunc( operand[ 0 ] ), Math.trunc( operand[ 1 ] ) ];
 			}
 
-			target[ key ] = Operators[ key ];
+			let needs_absence = condition_needs_absence_test( key, operand, options );
+			let needs_element = condition_needs_element_test( key, operand, options, FieldName );
+			// A path deeper than the repair is rendered for is left out of the pushdown.
+			if ( ( needs_absence || needs_element ) && !field_allows_element_test( FieldName ) ) { continue; }
+
+			if ( needs_absence || needs_element )
+			{
+				widened.push( { Name: key, Operand: operand, Absence: needs_absence, Element: needs_element } );
+				continue;
+			}
+
+			conditions[ key ] = operand;
 			// A kept $regex takes its flags with it.
 			if ( ( key === '$regex' ) && ( typeof Operators.$options !== 'undefined' ) )
 			{
-				target.$options = Operators.$options;
+				conditions.$options = Operators.$options;
 			}
 		}
 		return { Conditions: conditions, Widened: widened };

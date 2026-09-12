@@ -293,13 +293,24 @@ module.exports = function ( jsonstor )
 	// every position. The leaf branch is array_aware's, inside each rendered condition; the
 	// prefix branches are these.
 	//
-	// Returns a list of { Ref, Wrap } - the expression to render the condition against, and the
-	// ANY..SATISFIES it has to sit inside. Wrap is null for the path as written.
+	// Returns a list of { Ref, Wrap, Parent } - the expression to render the condition against,
+	// the ANY..SATISFIES it has to sit inside, and the expression the last segment was read off.
+	// Wrap is null for the path as written; Parent is null for a top level field.
+	//
+	// ***Parent exists for the absence tests.*** `a.b IS NOT VALUED` is true whenever `a` is an
+	// array, because N1QL reads a field of an array as MISSING - and jsongin, since the null
+	// repair of 2026-09-11, says an array which offered no document to descend into is ***not***
+	// a missing field. So the direct branch guards `TYPE(parent) != "array"`, and the element
+	// branches below guard `TYPE(element) = "object"`. Measured as a false exact on 8.0.2 and
+	// 5.0.1, 2026-09-12: twelve documents admitted, the engine rejecting every one.
 	function path_branches( Segments, Base, Depth )
 	{
 		let whole = path_reference( Base, Segments );
 		if ( whole === null ) { return null; }
-		let branches = [ { Ref: whole, Wrap: null } ];
+		// A single segment has no parent to guard: at the top it is the document, and below an
+		// ANY it is the bound element, which any_wrapper has already required to be an object.
+		let parent = ( Segments.length > 1 ) ? path_reference( Base, Segments.slice( 0, -1 ) ) : null;
+		let branches = [ { Ref: whole, Wrap: null, Parent: parent } ];
 
 		for ( let index = 1; index < Segments.length; index++ )
 		{
@@ -318,6 +329,7 @@ module.exports = function ( jsonstor )
 				branches.push( {
 					Ref: inner[ which ].Ref,
 					Wrap: any_wrapper( head, variable, inner[ which ].Wrap ),
+					Parent: inner[ which ].Parent,
 				} );
 			}
 		}
@@ -331,7 +343,11 @@ module.exports = function ( jsonstor )
 		return function ( Text )
 		{
 			let body = Inner ? Inner( Text ) : Text;
-			return `(TYPE(${Head}) = "array" AND ANY ${Variable} IN ${Head} SATISFIES ${body} END)`;
+			// ***Only an object element continues a path.*** A scalar or null element reached
+			// by index is not a document lacking the next field, so `p.b IS NOT VALUED` must not
+			// fire on it. Every positive predicate is false on MISSING anyway, so the guard
+			// changes nothing but the absence tests. See path_branches.
+			return `(TYPE(${Head}) = "array" AND ANY ${Variable} IN ${Head} SATISFIES (TYPE(${Variable}) = "object" AND ${body}) END)`;
 		};
 	}
 
@@ -414,7 +430,7 @@ module.exports = function ( jsonstor )
 	// MongoDB's before it: `{ a: null }` admits a document which has no `a` at all. N1QL spells
 	// exactly that question `IS NOT VALUED`, which is why this is one expression here and a
 	// two-branch repair on every other target.
-	function render_equality( FieldRef, Value )
+	function render_equality( FieldRef, Value, Parent )
 	{
 		let st = jsongin.ShortType( Value );
 		// ***An array or object operand is not rendered.*** See the header: Couchbase reorders an
@@ -422,11 +438,25 @@ module.exports = function ( jsonstor )
 		if ( !'nsbl'.includes( st ) ) { return null; }
 		return array_aware( FieldRef, function ( ref )
 		{
-			if ( st === 'l' ) { return `(${ref} IS NOT VALUED)`; }
+			if ( st === 'l' ) { return render_absent_or_null( ref, ( ref === FieldRef ) ? Parent : null ); }
 			let literal = render_literal( Value );
 			if ( literal === null ) { return null; }
 			return `(${ref} = ${literal})`;
 		} );
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***The absent-or-null question, in MongoDB's sense of absent.*** A field is missing when
+	// the document lacks it or when the path ran on below a scalar or null reached by name; a
+	// field of an ***array*** is not missing, it is a path which resolved to nothing. N1QL
+	// answers MISSING for both, so `IS NOT VALUED` alone admits `{ a: [] }` for `{ 'a.b': null }`
+	// where jsongin and MongoDB reject it. The parent guard is what separates the two; a bound
+	// element has no parent to guard and is guarded by any_wrapper instead.
+	function render_absent_or_null( ref, Parent )
+	{
+		if ( !Parent ) { return `(${ref} IS NOT VALUED)`; }
+		return `(TYPE(${Parent}) != "array" AND ${ref} IS NOT VALUED)`;
 	}
 
 
@@ -451,7 +481,7 @@ module.exports = function ( jsonstor )
 	// ***A non-scalar member drops the whole condition rather than itself.*** Dropping one member
 	// narrows the list to the others and loses exactly the documents that member was there for -
 	// the same asymmetry TranslatorSupport was written about, one level down.
-	function render_in( FieldRef, Values )
+	function render_in( FieldRef, Values, Parent )
 	{
 		if ( jsongin.ShortType( Values ) !== 'a' ) { return null; }
 		if ( !Values.length ) { return null; }
@@ -470,7 +500,7 @@ module.exports = function ( jsonstor )
 			let clauses = [];
 			if ( literals.length ) { clauses.push( `${ref} IN [ ${literals.join( ', ' )} ]` ); }
 			// A null in the list asks the absent-or-null question beside the list, not in it.
-			if ( split.HasNull ) { clauses.push( `${ref} IS NOT VALUED` ); }
+			if ( split.HasNull ) { clauses.push( render_absent_or_null( ref, ( ref === FieldRef ) ? Parent : null ) ); }
 			if ( !clauses.length ) { return null; }
 			return `(${clauses.join( ' OR ' )})`;
 		} );
@@ -549,11 +579,18 @@ module.exports = function ( jsonstor )
 		// See NEGATED_BY: a negation is taken over the whole branch set and never inside one.
 		let positive = NEGATED_BY[ Operator ];
 		let render_as = positive ? positive : Operator;
+		let value = Value;
+		// ***`$exists: false` is the negation of `$exists: true` over the branch set***, for the
+		// same reason `$ne` is: `{ 'a.b': { $exists: false } }` asks that ***no*** resolution of
+		// the path exists. Rendered per branch, the direct `a.b IS MISSING` admitted
+		// `{ a: [ { b: 1 } ] }` - a false exact, measured on 8.0.2 and 5.0.1 on 2026-09-12.
+		// A top level field has one branch and keeps the plain `IS MISSING` spelling.
+		if ( ( Operator === '$exists' ) && ( Value === false ) && ( branches.length > 1 ) ) { positive = '$exists'; value = true; }
 
 		let rendered = [];
 		for ( let index = 0; index < branches.length; index++ )
 		{
-			let text = render_condition_at( branches[ index ].Ref, render_as, Value, options );
+			let text = render_condition_at( branches[ index ].Ref, render_as, value, options, branches[ index ].Parent );
 			// ***A branch which cannot be rendered drops the whole condition.*** Keeping the
 			// others would ask about some of the places an array can sit and none of the rest,
 			// which is the narrowing this repair exists to remove, arrived at from inside the
@@ -597,20 +634,20 @@ module.exports = function ( jsonstor )
 	//
 	// ***The negating operators are not here***, only the positive forms they are built from.
 	// See NEGATED_BY.
-	function render_condition_at( ref, Operator, Value, options )
+	function render_condition_at( ref, Operator, Value, options, Parent )
 	{
 		switch ( Operator )
 		{
 			case '$eq':
 			case '$ImplicitEq':
-				return render_equality( ref, Value );
+				return render_equality( ref, Value, Parent );
 
 			case '$gt': return render_comparison( ref, '>', Value );
 			case '$gte': return render_comparison( ref, '>=', Value );
 			case '$lt': return render_comparison( ref, '<', Value );
 			case '$lte': return render_comparison( ref, '<=', Value );
 
-			case '$in': return render_in( ref, Value );
+			case '$in': return render_in( ref, Value, Parent );
 
 			case '$regex': return render_regex( ref, Value, options.RegexOptions );
 
@@ -621,6 +658,13 @@ module.exports = function ( jsonstor )
 				let divisor = Value[ 0 ];
 				let remainder = Value[ 1 ];
 				if ( !Number.isFinite( divisor ) || !Number.isFinite( remainder ) ) { return null; }
+				// ***The operands are truncated as well***, because jsongin and MongoDB read
+				// `[ 5.5, 1 ]` as `[ 5, 1 ]`. Rendered as written, `MOD( 11, 5.5 ) = 1` is false
+				// where the criteria matches 11 - a narrowing under an exact claim, measured on
+				// 8.0.2 and 5.0.1 on 2026-09-12. A divisor which truncates to zero is jsongin's
+				// to refuse, so it is left to the residual.
+				divisor = Math.trunc( divisor );
+				remainder = Math.trunc( remainder );
 				if ( divisor === 0 ) { return null; }
 				// ***TRUNC is load bearing.*** jsongin truncates toward zero before dividing, and
 				// a bare MOD does not: MOD( 10.5, 3 ) is 1.5 where jsongin answers 1. N1QL spells
@@ -702,8 +746,14 @@ module.exports = function ( jsonstor )
 			{
 				if ( jsongin.ShortType( Value ) !== 'b' ) { return null; }
 				// ***The question no other target in this family can answer.*** jsongin asks
-				// whether the key is present, which is IS MISSING and not IS NULL.
-				return Value ? `(${ref} IS NOT MISSING)` : `(${ref} IS MISSING)`;
+				// whether the key is present, which is IS MISSING and not IS NULL. A field of
+				// an array is MISSING to N1QL and present-through-its-elements to jsongin, so
+				// the direct branch is guarded by the parent's type and the element branches
+				// answer for the array; see path_branches. `$exists: false` arrives here as
+				// `true` and is negated over the whole branch set by render_condition.
+				if ( !Parent ) { return Value ? `(${ref} IS NOT MISSING)` : `(${ref} IS MISSING)`; }
+				let present = `(TYPE(${Parent}) != "array" AND ${ref} IS NOT MISSING)`;
+				return Value ? present : negate( present );
 			}
 
 			case '$type':
@@ -834,7 +884,7 @@ module.exports = function ( jsonstor )
 				// ***A field level $not negates the operator object under it.*** Renderable only
 				// over an exact subtree - anything imprecise inside comes back out inverted, and
 				// inverted broadening is narrowing.
-				if ( !subtree_is_exact( Operators[ name ], options ) ) { continue; }
+				if ( !subtree_is_exact( Operators[ name ], options ) ) { mark_dropped( options ); continue; }
 				clause = negate( render_operator_object( FieldName, Operators[ name ], options ) );
 			}
 			else if ( name === '$exprx' )
@@ -846,6 +896,7 @@ module.exports = function ( jsonstor )
 				clause = render_condition( FieldName, name, Operators[ name ], inner );
 			}
 			if ( clause ) { clauses.push( clause ); }
+			else { mark_dropped( options ); }
 		}
 		if ( !clauses.length ) { return null; }
 		if ( clauses.length === 1 ) { return clauses[ 0 ]; }
@@ -876,6 +927,7 @@ module.exports = function ( jsonstor )
 					// residual decides the rest. This is the only operator that is true of.
 					let clause = render_criteria( Value[ index ], options );
 					if ( clause ) { clauses.push( clause ); }
+					else if ( ( jsongin.ShortType( Value[ index ] ) !== 'o' ) || Object.keys( Value[ index ] ).length ) { mark_dropped( options ); }
 				}
 				if ( !clauses.length ) { return null; }
 				return `(${clauses.join( ' AND ' )})`;
@@ -940,10 +992,31 @@ module.exports = function ( jsonstor )
 		{
 			let clause = render_key( keys[ index ], Criteria[ keys[ index ] ], options );
 			if ( clause ) { clauses.push( clause ); }
+			else if ( ( keys[ index ] !== '$comment' ) && ( keys[ index ] !== '$options' ) ) { mark_dropped( options ); }
 		}
 		if ( !clauses.length ) { return null; }
 		if ( clauses.length === 1 ) { return clauses[ 0 ]; }
 		return `(${clauses.join( ' AND ' )})`;
+	}
+
+
+	//---------------------------------------------------------------------
+	// ***A dropped condition is recorded, because the fidelity walk cannot see one.***
+	// subtree_is_exact reads the fidelity table by operator name and the operand's shape for an
+	// implicit equality only, so a condition the renderer declines for its operand - an `$all`
+	// over arrays, a `$type` N1QL has no name for, an empty `$in`, a `$gte: null` - is exact to
+	// the walk and absent from the clause. Alone, that condition renders an empty clause, which
+	// Translate refuses to call exact; ***beside a renderable field it rendered the other field
+	// and claimed the whole criteria*** - `{ session_id: x, a: { $type: 'date' } }` returned every
+	// document of the session. Found by `H) Engine Parity Tests` on 8.0.2 and 5.0.1 on
+	// 2026-09-12, and by nothing before it, because every probe sent one field at a time.
+	//
+	// Every place a condition is declined marks the call, and Translate reads the mark. This is
+	// DynamoExpression's `not_exact( state )` in this file's shape. A `$comment` renders nothing
+	// and constrains nothing, and an empty child of an `$and` is true, so neither is a drop.
+	function mark_dropped( options )
+	{
+		if ( options.State ) { options.State.Dropped = true; }
 	}
 
 
@@ -1033,6 +1106,8 @@ module.exports = function ( jsonstor )
 		}
 
 		let exact = ( st === 'o' ) && subtree_is_exact( criteria, options );
+		// Fresh per call: whether the renderer declined any condition. See mark_dropped.
+		options.State = { Dropped: false };
 		let pushdown = ( st === 'o' ) ? render_criteria( criteria, options ) : null;
 
 		return {
@@ -1040,8 +1115,9 @@ module.exports = function ( jsonstor )
 			// ***A criteria which rendered nothing settles nothing***, however exact its
 			// operators are - an empty clause admits every document, so jsongin must still see
 			// them. Checked here rather than in subtree_is_exact because the two ask different
-			// questions: one is about the vocabulary, this is about what came out.
-			Residual: ( exact && pushdown ) ? null : criteria,
+			// questions: one is about the vocabulary, this is about what came out. ***And a
+			// criteria which rendered part of itself settles nothing either*** - see mark_dropped.
+			Residual: ( exact && pushdown && !options.State.Dropped ) ? null : criteria,
 			SortAbsorbed: false,
 			ProjectionAbsorbed: false,
 			LimitAbsorbed: false,
