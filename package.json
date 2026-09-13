@@ -1,6 +1,6 @@
 {
     "name": "@liquicode/jsonstor",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "A centralized MongoDB-style interface to work with a variety of database products and platforms.",
     "license": "MIT",
     "engines": {
@@ -64,6 +64,6 @@
         "webpack-node-externals": "^3.0.0"
     },
     "dependencies": {
-        "@liquicode/jsongin": "^0.1.0"
+        "@liquicode/jsongin": "^0.2.0"
     }
 }

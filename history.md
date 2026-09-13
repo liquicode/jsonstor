@@ -4,7 +4,69 @@
 # Project History
 
 
-v0.1.0 (current)
+v0.2.0 (current)
+---------------------------------------------------------------------
+
+Built on `@liquicode/jsongin` 0.2.0. Read
+  [jsongin's history](https://github.com/liquicode/jsongin/blob/main/history.md) alongside this
+  one: a criteria jsongin now refuses is refused by every storage.
+
+Every adapter was measured on every server version the family targets: 59 storage rows and 14
+  SQL dialect rows, all passing. The report is on the
+  [Tests](http://jsonstor.liquicode.com/#/external/tests.md) page.
+
+
+### Breaking
+
+- ***A criteria the engine refuses is refused by every storage before any server sees it.***
+  Each storage checks a criteria with `jsongin.ValidateQuery` first.
+  *Was: an adapter which translated the criteria could send it to its server, and an empty
+  collection could answer it with nothing.*
+- ***A document has a primary key.*** The `PrimaryKey` setting names the identifier field, which
+  is unique and cannot be changed by an update unless `PrimaryKeyMutable` is `true`. `IdField` is
+  still read as a deprecated spelling of `PrimaryKey`.
+  *Was: some adapters accepted a duplicate identifier, and some accepted an update to it and
+  silently discarded the change.*
+- ***`jsonstor-userinfo` protects the user info sub-document.*** Only the owner or an admin may
+  update it, `ReplaceOne` keeps it, and a refused or unmatched `UpdateOne`, `ReplaceOne` or
+  `DeleteOne` answers `0`. *Was: a writer could make themselves the owner, and `ReplaceOne`
+  removed the sub-document.*
+
+
+### New
+
+- ***`StorageInfo()`*** describes what a storage is talking to: the adapter name asked for, the
+  dialect in force, and the version the server reported.
+- ***`FindMany2()` takes a `Paging` object***, `{ SkipCount, MaxCount }`, as well as the
+  `MaxCount` number it always took. `jsonstor.Paging` reads both forms.
+- ***An adapter package can register a family of adapters***: a prime name for each server
+  version which behaves differently, and aliases which resolve to a prime. A connection to a
+  server which needs a different prime, or is older than every prime, is refused, and the error
+  names the prime the server needs.
+- ***Three more criteria translators***: `ElasticExpression` for Elasticsearch and OpenSearch,
+  `DynamoExpression` for DynamoDB, and `N1qlExpression` for Couchbase.
+- ***`jsonstor` can keep an index over the primary key***, so a criteria naming one identifier is
+  answered without reading every document. LevelDB and Redis always keep it; the built-in
+  adapters, Excel and the browser storages which keep documents as one blob keep it when
+  `HostIndex` is `true`. `RefreshIndex()` rebuilds it after something else wrote the store.
+- ***A SQL dialect can answer a criteria from the payload column***, and PostgreSql does so for
+  a plain equality.
+
+
+### Fixed
+
+- ***`dist/jsonstor.min.js` works in a browser.*** *Was: every storage threw
+  `process is not defined`.*
+- ***A `null` criteria matches every document on the SQL adapters***, as it does everywhere else.
+  *Was: matched nothing.*
+- ***`MangoExpression` keeps every document CouchDB would otherwise drop*** from a negation or an
+  absence test.
+- ***`DynamoExpression` renders a one-member `$in` or `$all`*** in a form DynamoDB accepts.
+- The package declares Node.js `>=10.4.0` in `engines`.
+
+
+
+v0.1.0 (2026-08-31)
 ---------------------------------------------------------------------
 
 Built on `jsongin` 0.1.0, which carries many breaking changes of its own. Read
