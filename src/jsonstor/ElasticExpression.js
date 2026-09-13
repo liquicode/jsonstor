@@ -8,8 +8,8 @@ const SUPPORT = require( './TranslatorSupport' )();
 
 	***This is the third corner of the translator design and the first one which assembles an
 	object in a foreign language.*** SqlExpression assembles a string in a foreign language.
-	MangoExpression prunes a tree in a language the target mostly shares - twenty seven of
-	jsongin's thirty one operators are MongoDB's own, spelled the same way. Query DSL shares
+	MangoExpression prunes a tree in a language the target mostly shares - twenty eight of
+	jsongin's thirty two operators are MongoDB's own, spelled the same way. Query DSL shares
 	none of that spelling: $gte is `{ range: { field: { gte: v } } }`, $and is `bool.filter`,
 	$or is `bool.should` with `minimum_should_match`, and there is no criteria-shaped thing to
 	prune. Every clause here is built rather than kept.
@@ -114,6 +114,9 @@ module.exports = function ( jsonstor )
 		// a general translation could silently narrow.
 		'$regex': 'broadening',
 		'$expr': 'dropped',
+		// $jsonSchema asks about the shape of the whole document, which Query DSL has no
+		// spelling for.
+		'$jsonSchema': 'dropped',
 		'$mod': 'dropped',
 		// Bitwise. Painless renderings measured, not shipped. See the header.
 		'$bitsAllSet': 'dropped',

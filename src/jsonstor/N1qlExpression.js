@@ -124,6 +124,9 @@ module.exports = function ( jsonstor )
 		// carries a boolean disjunct which over-admits by design.
 		'$expr': 'broadening',
 		'$exprx': 'broadening',
+		// $jsonSchema asks about the shape of the whole document. N1QL could spell parts of a
+		// schema - IS MISSING for `required`, TYPE() for `bsonType` - and nothing renders them.
+		'$jsonSchema': 'dropped',
 		// ***$mod is exact and the four $bits are not, which is a real difference and not an
 		// oversight.*** jsongin truncates toward zero before dividing, exactly as TRUNC does; but
 		// it ***refuses*** a non-integer for a bitwise test, where TRUNC accepts it. Measured: a

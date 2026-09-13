@@ -974,8 +974,8 @@ module.exports = function ( jsonstor )
 									// rendered rate is applied twice and drops rows the criteria matched.
 									continue;
 								default:
-									// An operator this builder cannot render - $type, $size, $all and
-									// $elemMatch today, and anything added later - places no constraint on
+									// An operator this builder cannot render - $type, $size, $all,
+									// $elemMatch and $jsonSchema today, and anything added later - places no constraint on
 									// the statement, so it is left out and the result broadens. jsongin still
 									// applies the whole criteria to every row, and jsongin is what refuses
 									// an operator which is genuinely invalid.
@@ -1091,8 +1091,8 @@ module.exports = function ( jsonstor )
 		// dialect coerces where jsongin compares by type. Raising a cell is the per
 		// operator optimization a live-server suite has to license first.
 		//
-		// $elemMatch, $size, $all and $type are deferred, and $comment, $sampleRate and
-		// $noop constrain nothing - all seven are left undeclared.
+		// $elemMatch, $size, $all, $type and $jsonSchema are deferred, and $comment, $sampleRate
+		// and $noop constrain nothing - all eight are left undeclared.
 		Fidelities: {
 			// Comparison
 			'$eq': 'broadening',

@@ -7,7 +7,7 @@ const SUPPORT = require( './TranslatorSupport' )();
 	Builds a MongoDB query document from a jsonstor criteria.
 
 	***A jsongin criteria is already almost a Mango query, and this file is about the almost.***
-	Twenty seven of jsongin's thirty one query operators are MongoDB's own operators, spelled
+	Twenty eight of jsongin's thirty two query operators are MongoDB's own operators, spelled
 	the same way and meaning the same thing, so the translation for them is the identity. The
 	remaining four - $eqx, $nex, $exprx and $noop - are jsongin extensions which MongoDB has
 	never heard of. ***That is the entire difference, and it was measured rather than assumed***
@@ -65,7 +65,8 @@ module.exports = function ( jsonstor )
 	// ***`exact` here is a measurement, which is what makes it different from SqlExpression***
 	// - where nothing claims exact, because nothing had been measured for it. Every operator
 	// below was put to both MongoDB and jsongin over one corpus, and the two agreed on all
-	// twenty seven. The four extensions did not disagree: the server refused them.
+	// twenty seven, and $jsonSchema arrived with a measurement of its own - see its cell. The
+	// four extensions did not disagree: the server refused them.
 	const FIDELITIES = {
 		// Comparison - MongoDB's own, same spelling, same meaning.
 		'$eq': 'exact',
@@ -85,6 +86,15 @@ module.exports = function ( jsonstor )
 		'$regex': 'exact',
 		'$expr': 'exact',
 		'$mod': 'exact',
+		// ***$jsonSchema is MongoDB's own, and the schema it carries is not a criteria.*** The
+		// engine reads a schema the way the server does - draft 4 with bsonType, measured on
+		// 6.0.28, 7.0.40 and 8.3.8 by jsongin's own parity suite - so the two name the same
+		// documents. The operand is handed over whole and never walked: a schema's keys are
+		// keywords and field names, and a `properties` entry or an `enum` value which happens to
+		// look like an operator is not one. See subtree_is_exact. CouchDB refuses the operator
+		// outright - `invalid_operator`, measured on 2.3.1 and 3.5 on 2026-09-12 - and lowers
+		// this cell to dropped.
+		'$jsonSchema': 'exact',
 		// Bitwise
 		'$bitsAllSet': 'exact',
 		'$bitsAllClear': 'exact',
@@ -795,6 +805,15 @@ module.exports = function ( jsonstor )
 			// MongoDB. Asking the table about it would find nothing and drop a $regex which
 			// is perfectly absorbable.
 			if ( key === '$options' ) { continue; }
+			// ***A schema is not a criteria.*** $jsonSchema's operand goes to the target whole, so
+			// the only question is whether the target reads the operator at all. Its keys are
+			// keywords and field names rather than operators, and walking them would refuse a
+			// `properties` entry or an `enum` value which merely looks like one.
+			if ( key === '$jsonSchema' )
+			{
+				if ( !operator_is_exact( key, options ) ) { return false; }
+				continue;
+			}
 			if ( key.startsWith( '$' ) )
 			{
 				if ( !operator_is_exact( key, options ) ) { return false; }
@@ -901,7 +920,9 @@ module.exports = function ( jsonstor )
 			if ( key.startsWith( '$' ) )
 			{
 				if ( !operator_is_exact( key, options ) ) { continue; }
-				if ( !subtree_is_exact( value, options, false ) ) { continue; }
+				// A $jsonSchema operand is a schema rather than a criteria and is never walked -
+				// see subtree_is_exact.
+				if ( ( key !== '$jsonSchema' ) && !subtree_is_exact( value, options, false ) ) { continue; }
 				pushdown[ key ] = value;
 				continue;
 			}

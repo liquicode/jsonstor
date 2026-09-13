@@ -126,9 +126,12 @@ module.exports = function ( jsonstor )
 		'$or': 'exact',
 		'$nor': 'exact',
 		'$not': 'exact',
-		// Evaluation. No regular expressions and no arithmetic of any kind.
+		// Evaluation. No regular expressions and no arithmetic of any kind, and no schema
+		// validation - $jsonSchema asks about the shape of the whole document, which no filter
+		// expression here has a spelling for.
 		'$regex': 'dropped',
 		'$expr': 'dropped',
+		'$jsonSchema': 'dropped',
 		'$mod': 'dropped',
 		'$bitsAllSet': 'dropped',
 		'$bitsAllClear': 'dropped',
