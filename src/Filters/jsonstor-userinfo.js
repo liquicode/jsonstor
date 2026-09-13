@@ -70,6 +70,50 @@ module.exports = {
 		function PARAMETER_ERROR( Name, Type ) { return new Error( `The required parameter is missing: [${Name}] of type [${Type}].` ); };
 		function READ_ACCESS_ERROR() { return new Error( `User does not have read access to this object or the object does not exist.` ); };
 		function WRITE_ACCESS_ERROR() { return new Error( `User does not have write access to this object.` ); };
+		function SHARE_ACCESS_ERROR() { return new Error( `User does not have permission to change the ownership or sharing of this object.` ); };
+
+
+		//---------------------------------------------------------------------
+		// What a write answers when it was refused or matched nothing: the count or the document
+		// the interface promises, not a null in place of a count.
+		function nothing_written( Options )
+		{
+			if ( Options.ReturnDocuments ) { return null; }
+			return 0;
+		};
+
+
+		//---------------------------------------------------------------------
+		// ***Whether an update writes to the user info sub-document.***
+		//
+		// Ownership and sharing are the owner's and an admin's to change, and a writer may change
+		// only the document. Without this a writer could `$set` themselves the owner, or edit the
+		// readers, writers and public flag, through an ordinary update (2026-09-13).
+		function updates_user_info( Updates )
+		{
+			let prefix = Settings.UserInfoField + '.';
+			function names_user_info( Name )
+			{
+				if ( jsongin.ShortType( Name ) !== 's' ) { return false; }
+				return ( Name === Settings.UserInfoField ) || Name.startsWith( prefix );
+			}
+			let operators = Object.keys( Updates );
+			for ( let index = 0; index < operators.length; index++ )
+			{
+				let operator = operators[ index ];
+				let operands = Updates[ operator ];
+				if ( jsongin.ShortType( operands ) !== 'o' ) { continue; }
+				let fields = Object.keys( operands );
+				for ( let field_index = 0; field_index < fields.length; field_index++ )
+				{
+					let field = fields[ field_index ];
+					if ( names_user_info( field ) ) { return true; }
+					// $rename names its destination as the value.
+					if ( ( operator === '$rename' ) && names_user_info( operands[ field ] ) ) { return true; }
+				}
+			}
+			return false;
+		};
 
 
 		//---------------------------------------------------------------------
@@ -513,20 +557,26 @@ module.exports = {
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
 							let storage_options = JSON.parse( JSON.stringify( Options ) );
 							storage_options.ReturnDocuments = true;
-							if ( !Updates.$set ) { Updates.$set = {}; }
-							Updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
+							let writes_user_info = updates_user_info( Updates );
+							// Copied, so the timestamp is not written into the caller's own object. Only
+							// the two levels the timestamp touches are copied: SafeClone would turn a
+							// driver value such as an ObjectId into {}.
+							let updates = Object.assign( {}, Updates );
+							updates.$set = Object.assign( {}, Updates.$set );
+							updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
 							let criteria = Filter.User( storage_options ).Criteria( Criteria );
 							let document = await Storage.FindOne( criteria, null, storage_options );
 							let error = null;
 							if ( !document ) { error = READ_ACCESS_ERROR(); }
 							else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+							else if ( writes_user_info && !Filter.User( storage_options ).CanShare( document ) ) { error = SHARE_ACCESS_ERROR(); }
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
-								resolve( null );
+								resolve( nothing_written( Options ) );
 								return;
 							}
-							let modified = await Storage.UpdateOne( criteria, Updates, storage_options );
+							let modified = await Storage.UpdateOne( criteria, updates, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -570,8 +620,13 @@ module.exports = {
 							if ( jsongin.ShortType( Options.User ) !== 'o' ) { throw PARAMETER_ERROR( 'Options.User', 'object' ); }
 							let storage_options = JSON.parse( JSON.stringify( Options ) );
 							storage_options.ReturnDocuments = true;
-							if ( !Updates.$set ) { Updates.$set = {}; }
-							Updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
+							let writes_user_info = updates_user_info( Updates );
+							// Copied, so the timestamp is not written into the caller's own object. Only
+							// the two levels the timestamp touches are copied: SafeClone would turn a
+							// driver value such as an ObjectId into {}.
+							let updates = Object.assign( {}, Updates );
+							updates.$set = Object.assign( {}, Updates.$set );
+							updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
 							let criteria = Filter.User( storage_options ).Criteria( Criteria );
 							let modified_ids = await Storage.FindMany( criteria, { _id: 1 }, storage_options );
 							let modified = [];
@@ -582,12 +637,13 @@ module.exports = {
 								let error = null;
 								if ( !document ) { error = READ_ACCESS_ERROR(); }
 								else if ( !Filter.User( storage_options ).CanWrite( document ) ) { error = WRITE_ACCESS_ERROR(); }
+								else if ( writes_user_info && !Filter.User( storage_options ).CanShare( document ) ) { error = SHARE_ACCESS_ERROR(); }
 								if ( error )
 								{
 									if ( Settings.ThrowPermissionErrors ) { throw error; }
 									continue;
 								}
-								document = await Storage.UpdateOne( { _id: document_id }, Updates, storage_options );
+								document = await Storage.UpdateOne( { _id: document_id }, updates, storage_options );
 								modified.push( document );
 							}
 							if ( Options.ReturnDocuments )
@@ -642,10 +698,22 @@ module.exports = {
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
-								resolve( null );
+								resolve( nothing_written( Options ) );
 								return;
 							}
-							let modified = await Storage.ReplaceOne( criteria, Document, storage_options );
+							// ***The replacement keeps the ownership the stored document had.*** It used
+							// to be passed down as given, so a replacement without the sub-document -
+							// the ordinary case - left a document nobody owned and its owner could not
+							// find, and a writer could replace the sub-document with one of their own.
+							// Ownership and sharing change through Share, SetOwner, or an owner's update.
+							//
+							// ***A shallow copy, never SafeClone.*** SafeClone turns a driver value such as
+							// MongoDB's ObjectId into {}, and a replacement whose _id changed that way is
+							// refused by the server as an attempt to alter it.
+							let replacement = Object.assign( {}, Document );
+							replacement[ Settings.UserInfoField ] = jsongin.SafeClone( document[ Settings.UserInfoField ] );
+							replacement[ Settings.UserInfoField ].updated_at = zulu_timestamp();
+							let modified = await Storage.ReplaceOne( criteria, replacement, storage_options );
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -697,7 +765,7 @@ module.exports = {
 							if ( error )
 							{
 								if ( Settings.ThrowPermissionErrors ) { throw error; }
-								resolve( null );
+								resolve( nothing_written( Options ) );
 								return;
 							}
 							let modified = await Storage.DeleteOne( criteria, storage_options );

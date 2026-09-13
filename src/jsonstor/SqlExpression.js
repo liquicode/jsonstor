@@ -576,8 +576,17 @@ module.exports = function ( jsonstor )
 	{
 		if ( jsongin.ShortType( Request ) !== 'o' ) { throw new Error( `The Request parameter must be an object.` ); }
 		let options = apply_defaults( Request.Options );
+		// ***A null or undefined criteria is every document, not a value.*** The renderer below
+		// reads a bare null as the SQL literal NULL, and `WHERE NULL` admits no row at all - so
+		// every SQL adapter answered nothing for `FindMany( null )` and emptied nothing for
+		// `DeleteMany( null )`. It is not a criteria, so there is no clause to render.
+		let pushdown = '';
+		if ( 'lu'.includes( jsongin.ShortType( Request.Criteria ) ) === false )
+		{
+			pushdown = render( Request.Criteria, options );
+		}
 		return {
-			Pushdown: render( Request.Criteria, options ),
+			Pushdown: pushdown,
 			// ***The residual is the whole criteria, and that is the honest answer today.***
 			// The clause is a pre-filter and jsongin.Query is the row filter. Until a
 			// rendering can report that it decided a condition ***exactly*** - which is not

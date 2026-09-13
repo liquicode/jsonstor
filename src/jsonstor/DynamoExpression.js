@@ -434,6 +434,9 @@ module.exports = function ( jsonstor )
 					if ( !clause ) { not_exact( state ); return null; }
 					branches.push( clause );
 				}
+				// ***One member is its own clause***, for the reason given at $all below: DynamoDB
+				// refuses `( ( ... ) )`, so `{ n: { $in: [ 1 ] } }` failed the whole query.
+				if ( branches.length === 1 ) { return branches[ 0 ]; }
 				return '( ' + branches.join( ' OR ' ) + ' )';
 			}
 
@@ -469,6 +472,11 @@ module.exports = function ( jsonstor )
 					if ( !clause ) { not_exact( state ); return null; }
 					clauses.push( clause );
 				}
+				// ***One member is its own clause.*** Each clause arrives parenthesized, and DynamoDB
+				// refuses `( ( ... ) )` outright - "The expression has redundant parentheses" - so
+				// `{ tags: { $all: [ 'red' ] } }` failed the whole query (2026-09-13, the
+				// documentation sweep, on DynamoDB Local 3.3).
+				if ( clauses.length === 1 ) { return clauses[ 0 ]; }
 				return '( ' + clauses.join( ' AND ' ) + ' )';
 			}
 
