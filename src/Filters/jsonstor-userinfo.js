@@ -537,6 +537,74 @@ module.exports = {
 
 
 		//=====================================================================
+		// ***Whether the caller's own update, or replacement, would change the document.***
+		//
+		// A storage answers what an update changed, not what it matched, and leaves a document
+		// alone when the update leaves it as it was (jsonx/.plans/update-answers-changed.md).
+		// This filter stamps `updated_at` into every write it passes down, so a storage under it
+		// always saw a change: a document set to the value it held was rewritten, counted and
+		// returned, and its `updated_at` said an update had happened. ***So the filter asks first,
+		// leaving its own stamp out of the question*** *(user, 2026-09-19)*, and a write which
+		// would change nothing answers as nothing written and is never sent down. An update
+		// which touches the user info alone - sharing with a reader - is a change like any other.
+		//
+		// ***The primary key is left out of the comparison.*** jsongin.Update works on a
+		// SafeClone, and SafeClone leaves a driver value such as MongoDB's ObjectId a broken
+		// copy which can be neither compared ("Cannot compare values of type [f]") nor written as
+		// JSON - measured 2026-09-19, when the first version of this failed half of this filter's
+		// suite on MongoDB and nowhere else. A key cannot move, so nothing is lost by not asking:
+		// a write which names another key is sent down, where the storage refuses it.
+		//
+		// ***A document which cannot be compared is treated as changed***, which is what this
+		// filter did for every document before: a driver value deeper in a document costs a
+		// stamp and a write, never a refusal.
+		//=====================================================================
+
+
+		function without_key( Document )
+		{
+			let copy = Object.assign( {}, Document );
+			delete copy._id;
+			return copy;
+		};
+
+
+		function update_names_key( Updates )
+		{
+			let operators = Object.keys( Updates );
+			for ( let index = 0; index < operators.length; index++ )
+			{
+				let operands = Updates[ operators[ index ] ];
+				if ( jsongin.ShortType( operands ) !== 'o' ) { continue; }
+				if ( typeof operands._id !== 'undefined' ) { return true; }
+			}
+			return false;
+		};
+
+
+		function update_changes( Document, Updates )
+		{
+			// An update which names the key is the storage's to refuse.
+			if ( update_names_key( Updates ) ) { return true; }
+			let before = without_key( Document );
+			let after = jsongin.Update( before, Updates );
+			try { return !jsongin.StrictEquals( jsongin.SafeClone( before ), after ); }
+			catch ( error ) { return true; }
+		};
+
+
+		function replacement_changes( Document, Replacement )
+		{
+			if ( ( typeof Replacement._id !== 'undefined' ) && ( String( Replacement._id ) !== String( Document._id ) ) ) { return true; }
+			// As the storage will see it: with the stored ownership, whatever the caller sent.
+			let candidate = without_key( Replacement );
+			candidate[ Settings.UserInfoField ] = Document[ Settings.UserInfoField ];
+			try { return !jsongin.StrictEquals( jsongin.SafeClone( without_key( Document ) ), jsongin.SafeClone( candidate ) ); }
+			catch ( error ) { return true; }
+		};
+
+
+		//=====================================================================
 		// UpdateOne
 		//---------------------------------------------------------------------
 		// Modifies a single document.
@@ -576,7 +644,18 @@ module.exports = {
 								resolve( nothing_written( Options ) );
 								return;
 							}
+							if ( !update_changes( document, Updates ) )
+							{
+								resolve( nothing_written( Options ) );
+								return;
+							}
+							// ***The answer is the storage's.*** This resolved a 1 whatever came back.
 							let modified = await Storage.UpdateOne( criteria, updates, storage_options );
+							if ( !modified )
+							{
+								resolve( nothing_written( Options ) );
+								return;
+							}
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
@@ -643,8 +722,9 @@ module.exports = {
 									if ( Settings.ThrowPermissionErrors ) { throw error; }
 									continue;
 								}
+								if ( !update_changes( document, Updates ) ) { continue; }
 								document = await Storage.UpdateOne( { _id: document_id }, updates, storage_options );
-								modified.push( document );
+								if ( document ) { modified.push( document ); }
 							}
 							if ( Options.ReturnDocuments )
 							{
@@ -710,10 +790,20 @@ module.exports = {
 							// ***A shallow copy, never SafeClone.*** SafeClone turns a driver value such as
 							// MongoDB's ObjectId into {}, and a replacement whose _id changed that way is
 							// refused by the server as an attempt to alter it.
+							if ( !replacement_changes( document, Document ) )
+							{
+								resolve( nothing_written( Options ) );
+								return;
+							}
 							let replacement = Object.assign( {}, Document );
 							replacement[ Settings.UserInfoField ] = jsongin.SafeClone( document[ Settings.UserInfoField ] );
 							replacement[ Settings.UserInfoField ].updated_at = zulu_timestamp();
 							let modified = await Storage.ReplaceOne( criteria, replacement, storage_options );
+							if ( !modified )
+							{
+								resolve( nothing_written( Options ) );
+								return;
+							}
 							if ( Options.ReturnDocuments )
 							{
 								clean_document( modified );
