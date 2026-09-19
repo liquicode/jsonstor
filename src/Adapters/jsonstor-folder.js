@@ -322,10 +322,16 @@ module.exports = {
 
 		//=====================================================================
 		// Rewrites a document in place and moves its index entry with it.
+		//
+		// ***An update answers what it changed, not what it matched*** *(user, 2026-09-19)*. A
+		// document which comes back from jsongin.Update equal to the one it was given is left
+		// alone - its file not rewritten, not counted, not returned - and this answers null for
+		// it, as the memory storage does. See jsonx/.plans/update-answers-changed.md.
 		function apply_update( Filename, Document, Updates )
 		{
 			let before = document_key( Document );
 			let updated = jsongin.Update( Document, Updates );
+			if ( jsongin.StrictEquals( Document, updated ) ) { return null; }
 			let after = document_key( updated );
 			check_key_move( before, after );
 			require_unique( after, Filename, before );
@@ -772,7 +778,7 @@ module.exports = {
 							{
 								let document = read_document( json_files[ 0 ] );
 								modified = apply_update( json_files[ 0 ], document, Updates );
-								modified_count++;
+								if ( modified !== null ) { modified_count++; }
 							}
 						}
 						else
@@ -782,8 +788,10 @@ module.exports = {
 								let test_document = read_document( json_files[ index ] );
 								if ( jsongin.Query( test_document, Criteria ) )
 								{
+									// The first match is the one document this call is about, whether
+									// or not the update changes it.
 									modified = apply_update( json_files[ index ], test_document, Updates );
-									modified_count++;
+									if ( modified !== null ) { modified_count++; }
 									break;
 								}
 							}
@@ -833,6 +841,7 @@ module.exports = {
 							)
 							{
 								document = apply_update( json_files[ index ], document, Updates );
+								if ( document === null ) { continue; }
 								modified_count++;
 								if ( Options.ReturnDocuments ) { modified.push( document ); }
 							}
@@ -889,6 +898,14 @@ module.exports = {
 								{
 									let carried = jsongin.GetValue( document, key_field );
 									if ( typeof carried !== 'undefined' ) { jsongin.SetValue( modified, key_field, carried ); }
+								}
+								// ***A replacement which puts back what is held changes nothing***, and
+								// answers as an update which changed nothing does. Field order counts, as
+								// it does in the memory storage.
+								if ( jsongin.StrictEquals( document, modified ) )
+								{
+									modified = null;
+									break;
 								}
 								let before = document_key( document );
 								let after = document_key( modified );

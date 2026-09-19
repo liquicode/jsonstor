@@ -649,10 +649,18 @@ module.exports = {
 		// ***An update rewrites the document in place, so the index entry follows it.***
 		// jsongin.Update answers a new object rather than mutating the one it was given, which is
 		// why the old entry is removed by its old key and the new one filed by its new one.
+		//
+		// ***An update answers what it changed, not what it matched*** *(user, 2026-09-19)*. A
+		// document which comes back from jsongin.Update equal to the one it was given is left
+		// alone - not written, not counted, not returned - and this answers null for it. The
+		// comparison is jsongin.StrictEquals, which is what jsongin.Diff uses. Until then every
+		// matched document was counted and rewritten, here and in thirteen other adapters, while
+		// the interface page said "the number changed". See jsonx/.plans/update-answers-changed.md.
 		function apply_update( Position, Document, Updates )
 		{
 			let before = document_key( Document );
 			let updated = jsongin.Update( Document, Updates );
+			if ( jsongin.StrictEquals( Document, updated ) ) { return null; }
 			let after = document_key( updated );
 			check_key_move( before, after );
 			require_unique( after, Document, before );
@@ -681,7 +689,7 @@ module.exports = {
 							if ( Storage.Store.length > 0 )
 							{
 								modified = apply_update( 0, Storage.Store[ 0 ], Updates );
-								modified_count++;
+								if ( modified !== null ) { modified_count++; }
 							}
 						}
 						else
@@ -691,8 +699,10 @@ module.exports = {
 								let test_document = Storage.Store[ index ];
 								if ( jsongin.Query( test_document, Criteria ) )
 								{
+									// The first match is the one document this call is about, whether
+									// or not the update changes it.
 									modified = apply_update( index, test_document, Updates );
-									modified_count++;
+									if ( modified !== null ) { modified_count++; }
 									break;
 								}
 							}
@@ -741,6 +751,7 @@ module.exports = {
 							)
 							{
 								document = apply_update( index, document, Updates );
+								if ( document === null ) { continue; }
 								modified_count++;
 								if ( Options.ReturnDocuments ) { modified.push( document ); }
 							}
@@ -796,6 +807,15 @@ module.exports = {
 								{
 									let carried = jsongin.GetValue( document, key_field );
 									if ( typeof carried !== 'undefined' ) { jsongin.SetValue( modified, key_field, carried ); }
+								}
+								// ***A replacement which puts back what is held changes nothing***, and
+								// answers as an update which changed nothing does. ***Field order counts***:
+								// a key carried over lands last, so a replacement which omits the key is a
+								// change the first time, when it moves the key, and none the second.
+								if ( jsongin.StrictEquals( document, modified ) )
+								{
+									modified = null;
+									break;
 								}
 								let before = document_key( document );
 								let after = document_key( modified );
