@@ -144,6 +144,23 @@ module.exports = function ()
 
 
 	//---------------------------------------------------------------------
+	// A copy of a caller's Options with this module's private channel taken out.
+	//
+	// ***Object.assign copies enumerable symbol keys.*** So a layer which forwards a copy of the
+	// caller's Options on a call of its own - Undo.js reads the documents it is about to change -
+	// would hand that call the collector belonging to the caller's call, and its measurements
+	// would overwrite the ones the caller asked for. The Symbol is private to this file, so the
+	// removal has to live here too.
+	function Detach( Options )
+	{
+		if ( jsongin.ShortType( Options ) !== 'o' ) { return {}; }
+		let detached = Object.assign( {}, Options );
+		delete detached[ COLLECTOR ];
+		return detached;
+	}
+
+
+	//---------------------------------------------------------------------
 	function wrapped_function( Storage, Name, OptionsIndex, AdapterName )
 	{
 		let original = Storage[ Name ];
@@ -196,6 +213,10 @@ module.exports = function ()
 		Report: Report,
 		Read: Read,
 		IsMeasuring: IsMeasuring,
+		Detach: Detach,
+		// ***The one place which says where Options sits.*** Undo.js needs the same answer and
+		// the family already had two copies of this table; it does not need a third.
+		OptionsIndex: STORAGE_FUNCTIONS,
 	};
 
 };

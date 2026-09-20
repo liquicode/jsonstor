@@ -4,7 +4,25 @@
 # Project History
 
 
-v0.2.0 (current)
+v0.3.0 (unreleased)
+---------------------------------------------------------------------
+
+- ***`WithUndo( Handler )` is the sixteenth storage function.*** It runs a handler against a
+  storage of its own and puts back what that handler wrote if it throws. Every write inside the
+  scope is recorded together with the write which reverses it, and a failure replays those in
+  reverse.
+- ***No adapter implements it or knows about it.*** It is built out of the other fifteen
+  functions, so it behaves the same on all nineteen adapters and no adapter package changes.
+- ***It is an undo and not a transaction.*** Every write is made when it is called, nothing is
+  isolated and nothing is deferred. An undo can only overwrite whatever it finds.
+- Only calls on the storage the handler is given are recorded; a call on the outer storage
+  inside the handler survives.
+- A second scope on one storage, a `DropStorage` inside one, a storage with no primary key and
+  one with `PrimaryKeyMutable` are each refused by name.
+- `StorageInfo()` is unchanged: a fact which is the same on every adapter is not worth reporting.
+
+
+v0.2.0
 ---------------------------------------------------------------------
 
 Built on `@liquicode/jsongin` 0.2.0. Read

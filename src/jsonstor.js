@@ -14,6 +14,11 @@ const STATISTICS = require( './jsonstor/Statistics' )();
 // src/jsonstor/CriteriaCheck.js.
 const CRITERIA_CHECK = require( './jsonstor/CriteriaCheck' )();
 
+// ***A scope whose writes can be put back.*** It is built from ordinary storage calls, so it is
+// the same on every adapter and no adapter knows about it. It needs Statistics only to keep that
+// module's private channel out of the calls it makes for itself. See src/jsonstor/Undo.js.
+const UNDO = require( './jsonstor/Undo' )( STATISTICS );
+
 
 //---------------------------------------------------------------------
 // ***Compares two version arrays, shortest-first and element by element.***
@@ -272,6 +277,11 @@ module.exports = function ( AdapterName, Settings, Filters )
 					storage.FilterName = item.FilterName;
 				}
 			}
+			// ***Above the filters, so an undo obeys them.*** A pre-read and an undo write travel
+			// the same way the write they are undoing did: through jsonstor-userinfo's gate, and
+			// into jsonstor-oplog's log. Below the measurement, so this layer never meets a
+			// { Result, Statistics } envelope it would have to unwrap and rebuild.
+			UNDO.Wrap( storage );
 			// ***Last, so that it is outermost.*** Options.Statistics is stripped here and a
 			// private collector forwarded in its place, which is what keeps every filter and
 			// the adapter beneath returning the value they always returned.
@@ -292,9 +302,11 @@ module.exports = function ( AdapterName, Settings, Filters )
 			if ( typeof jsonstor.Filters[ FilterName ] === 'undefined' ) { throw new Error( `Storage filter [${FilterName}] is not loaded.` ); }
 			let storage = jsonstor.Filters[ FilterName ].GetFilter( jsonstor, Storage, Settings );
 			storage.FilterName = FilterName;
-			// ***This is a second entry point and it needs the same wrapper.*** A storage built
-			// here never passed through GetStorage, so without this a filtered storage would
-			// accept Options.Statistics and silently answer without any.
+			// ***This is a second entry point and it needs the same wrappers.*** A storage built
+			// here never passed through GetStorage, so without these a filtered storage would
+			// accept Options.Statistics and silently answer without any, and would have no
+			// WithUndo at all.
+			UNDO.Wrap( storage );
 			STATISTICS.Wrap( storage, ( Storage && Storage.AdapterName ) || '' );
 			CRITERIA_CHECK.Wrap( storage );
 			return storage;
@@ -365,6 +377,19 @@ module.exports = function ( AdapterName, Settings, Filters )
 				// for. An adapter whose database hosts the index answers 0 and means it.
 				// See jsonx/.plans/primary-keys-and-indexes.md.
 				RefreshIndex: async function ( Options ) { throw new Error( 'RefreshIndex is not implemented.' ); },
+				// ***The sixteenth method, and the only one an adapter never implements.***
+				// `WithUndo` runs a handler against a storage of its own and puts back what that
+				// handler wrote if it throws. It is built from the fifteen above, so jsonstor
+				// answers it for every adapter and none of them is asked a thing.
+				//
+				// ***A stub here, and never reached.*** GetStorage replaces it on the way out, so
+				// this throws only for a storage assembled some other way - which is the same
+				// reason the other fifteen are stubs.
+				//
+				// ***It is not a transaction***, and it does not pretend to be one: the writes are
+				// made as they are called, nothing is isolated, and an undo is a set of writes
+				// which can only overwrite what it finds. See src/jsonstor/Undo.js.
+				WithUndo: async function ( Handler, Options ) { throw new Error( 'WithUndo is not installed on this storage.' ); },
 			};
 			return storage;
 		},

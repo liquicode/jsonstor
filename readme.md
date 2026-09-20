@@ -82,6 +82,10 @@ Storage Interface
 	Describes the product, version and identifier of the storage.
 - `RefreshIndex( Options )` :
 	Rebuilds an adapter's identifier index after something else changed the store.
+- `WithUndo( Handler, Options )` :
+	Runs a handler whose writes are put back if it fails. Built by `jsonstor` rather than by an
+	adapter, so it works the same on all of them. It is an undo and not a transaction: the writes
+	are made as they are called and nothing is isolated.
 
 See the [Storage Interface](http://jsonstor.liquicode.com/#/guides/Storage-Interface.md).
 

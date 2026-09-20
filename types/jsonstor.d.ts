@@ -50,10 +50,14 @@ declare module '@liquicode/jsonstor'
 	//---------------------------------------------------------------------
 	// The storage interface.
 	//
-	// ***The twelve functions below are the interface every adapter implements***, and they
+	// ***The fifteen functions below are the interface every adapter implements***, and they
 	// are the same in every adapter - which is what makes one set of documentation and one
 	// set of tests cover all of them. `StorageInterface()` returns them as stubs which throw,
 	// so an adapter which forgets one fails loudly rather than silently doing nothing.
+	//
+	// ***`WithUndo` is the sixteenth and no adapter implements it.*** jsonstor builds it out of
+	// the other fifteen and installs it on every storage, so it is declared here beside them
+	// and is not something an adapter is asked for.
 	//
 	// An adapter is free to add members of its own, so this is left open. `jsonstor-memory`
 	// carries `Store` and `IsDirty`; they are not part of the interface and not declared.
@@ -126,6 +130,25 @@ declare module '@liquicode/jsonstor'
 		 * a stale index does not return wrong rows, it loses them silently.
 		 */
 		RefreshIndex( Options?: JsonDocument ): Promise<number>;
+
+		/**
+		 * Runs `Handler` against a storage of its own and puts back what that handler wrote if
+		 * it throws, then rethrows. Answers whatever the handler answered.
+		 *
+		 * ***Only calls on the storage handed to the handler are recorded.*** A call on this
+		 * storage inside the handler is outside the scope and survives, which is how a caller
+		 * writes a line that must not be reversed. The handed storage also carries `Undo()`,
+		 * which reverses the scope and still returns.
+		 *
+		 * ***This is a compensating undo and not a transaction.*** Every write is made when it
+		 * is called, nothing is isolated, nothing is deferred, and an undo is a set of writes
+		 * which can only overwrite whatever it finds. One scope at a time per storage; a
+		 * storage with no primary key, or a movable one, refuses to open one.
+		 */
+		WithUndo( Handler: ( Storage: Storage ) => Promise<any>, Options?: JsonDocument ): Promise<any>;
+
+		/** Reverses this scope and returns normally. Present only on the storage a WithUndo handler is given. */
+		Undo?(): void;
 
 		/** What the identity settings resolved to. Read by BuildStorageInfo. */
 		PrimaryKeyInfo?: PrimaryKeyInfo;
