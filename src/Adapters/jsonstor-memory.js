@@ -22,6 +22,7 @@ module.exports = {
 				PrimaryKey,          the field which is the identifier. Default '_id'.
 				PrimaryKeyMutable,   may an update or a replace change it. Default false.
 				HostIndex,           hold an index over it. Default false.
+				Documents,           the documents the storage starts with. Default none.
 			}
 		*/
 		let Storage = jsonstor.StorageInterface();
@@ -223,6 +224,38 @@ module.exports = {
 			jsongin.SetValue( Document, field, NewUniqueID() );
 			return;
 		}
+
+
+		//=====================================================================
+		// The documents the storage starts with, from Settings.Documents.
+		//
+		// ***Populating is inserting, not assigning.*** Each document is cloned, given an
+		// identifier if it arrived without one, checked for a duplicate and filed in the index,
+		// exactly as InsertOne would - so a storage which starts with documents is
+		// indistinguishable from one which was handed the same documents. Assigning the array
+		// to Storage.Store instead would share the caller's objects, skip the key and leave an
+		// index empty.
+		//
+		// ***This is a start, not a reset.*** DropStorage empties the storage and does not seed
+		// it again; the setting says what the storage opened with.
+		function seed_store()
+		{
+			if ( typeof Settings.Documents === 'undefined' ) { return 0; }
+			if ( jsongin.ShortType( Settings.Documents ) !== 'a' ) { throw new Error( `Settings.Documents must be an array of documents.` ); }
+			for ( let index = 0; index < Settings.Documents.length; index++ )
+			{
+				let given = Settings.Documents[ index ];
+				if ( jsongin.ShortType( given ) !== 'o' ) { throw new Error( `Settings.Documents[ ${index} ] must be an object.` ); }
+				let document = jsongin.Clone( given );
+				apply_new_key( document );
+				require_unique( document_key( document ), null );
+				Storage.Store.push( document );
+				index_add( document );
+			}
+			return Storage.Store.length;
+		}
+
+		seed_store();
 
 
 		//=====================================================================
