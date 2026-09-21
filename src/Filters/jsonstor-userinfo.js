@@ -549,11 +549,12 @@ module.exports = {
 		// which touches the user info alone - sharing with a reader - is a change like any other.
 		//
 		// ***The primary key is left out of the comparison.*** jsongin.Update works on a
-		// SafeClone, and SafeClone leaves a driver value such as MongoDB's ObjectId a broken
-		// copy which can be neither compared ("Cannot compare values of type [f]") nor written as
+		// SafeClone, and SafeClone left a driver value such as MongoDB's ObjectId a broken
+		// copy which could be neither compared ("Cannot compare values of type [f]") nor written as
 		// JSON - measured 2026-09-19, when the first version of this failed half of this filter's
-		// suite on MongoDB and nowhere else. A key cannot move, so nothing is lost by not asking:
-		// a write which names another key is sent down, where the storage refuses it.
+		// suite on MongoDB and nowhere else. jsongin passes a BSON value through untouched since
+		// 2026-09-21, and the key stays out anyway: a key cannot move, so nothing is lost by not
+		// asking, and a write which names another key is sent down, where the storage refuses it.
 		//
 		// ***A document which cannot be compared is treated as changed***, which is what this
 		// filter did for every document before: a driver value deeper in a document costs a
@@ -627,8 +628,8 @@ module.exports = {
 							storage_options.ReturnDocuments = true;
 							let writes_user_info = updates_user_info( Updates );
 							// Copied, so the timestamp is not written into the caller's own object. Only
-							// the two levels the timestamp touches are copied: SafeClone would turn a
-							// driver value such as an ObjectId into {}.
+							// the two levels the timestamp touches are copied, since SafeClone broke a driver value
+							// such as an ObjectId until jsongin passed BSON values through (2026-09-21).
 							let updates = Object.assign( {}, Updates );
 							updates.$set = Object.assign( {}, Updates.$set );
 							updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
@@ -701,8 +702,8 @@ module.exports = {
 							storage_options.ReturnDocuments = true;
 							let writes_user_info = updates_user_info( Updates );
 							// Copied, so the timestamp is not written into the caller's own object. Only
-							// the two levels the timestamp touches are copied: SafeClone would turn a
-							// driver value such as an ObjectId into {}.
+							// the two levels the timestamp touches are copied, since SafeClone broke a driver value
+							// such as an ObjectId until jsongin passed BSON values through (2026-09-21).
 							let updates = Object.assign( {}, Updates );
 							updates.$set = Object.assign( {}, Updates.$set );
 							updates.$set[ `${Settings.UserInfoField}.updated_at` ] = zulu_timestamp();
@@ -787,9 +788,9 @@ module.exports = {
 							// find, and a writer could replace the sub-document with one of their own.
 							// Ownership and sharing change through Share, SetOwner, or an owner's update.
 							//
-							// ***A shallow copy, never SafeClone.*** SafeClone turns a driver value such as
-							// MongoDB's ObjectId into {}, and a replacement whose _id changed that way is
-							// refused by the server as an attempt to alter it.
+							// ***A shallow copy.*** SafeClone broke a driver value such as MongoDB's ObjectId
+							// until jsongin passed BSON values through (2026-09-21), and a replacement whose _id
+							// changed that way was refused by the server as an attempt to alter it.
 							if ( !replacement_changes( document, Document ) )
 							{
 								resolve( nothing_written( Options ) );

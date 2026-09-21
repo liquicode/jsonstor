@@ -199,8 +199,10 @@ module.exports = function ( Statistics )
 					// caller's own copy and never the store's - invariant 7 - so there is nothing
 					// to protect it from. And cloning it would break the one adapter whose
 					// identifier is not a JSON value: measured on 2026-09-20, jsongin.SafeClone
-					// throws on a MongoDB ObjectId, which made every undone delete on that
-					// adapter put back one document fewer than it took.
+					// threw on a MongoDB ObjectId, which made every undone delete on that
+					// adapter put back one document fewer than it took. jsongin passes a BSON
+					// value through untouched since 2026-09-21; not cloning stays right for the
+					// first reason.
 					Scope.Entries.push( { Kind: 'Delete', Document: document } );
 					continue;
 				}
